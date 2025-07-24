@@ -313,11 +313,36 @@ export default class Polygon3D extends THREE.Group {
     raycast(raycaster: THREE.Raycaster, intersects: THREE.Intersection[]): void {
         if (!this.visible || this.points.length < 3) return;
 
+        // Ensure world matrix is up to date
+        this.updateMatrixWorld();
+
         // Use temporary array for THREE.js intersections
         const tempIntersects: THREE.Intersection[] = [];
         
-        // Let the wireframe handle raycasting first
-        this.wireframe.raycast(raycaster, tempIntersects);
+        // Let the wireframe handle raycasting first with enhanced parameters
+        if (this.wireframe) {
+            // Store original threshold and increase it for better selection
+            const originalThreshold = raycaster.params.Line?.threshold || 10;
+            const camera = (raycaster as any).camera;
+            
+            // Use adaptive threshold if camera is available
+            if (camera) {
+                const adaptiveThreshold = getAdaptiveLineSelectionThreshold(
+                    raycaster, 
+                    camera, 
+                    this, 
+                    SELECTION_CONFIG.THRESHOLDS.POLYGON_MULTIPLIER
+                );
+                raycaster.params.Line = { threshold: adaptiveThreshold };
+            } else {
+                raycaster.params.Line = { threshold: originalThreshold * SELECTION_CONFIG.THRESHOLDS.POLYGON_MULTIPLIER };
+            }
+            
+            this.wireframe.raycast(raycaster, tempIntersects);
+            
+            // Restore original threshold
+            raycaster.params.Line = { threshold: originalThreshold };
+        }
         
         // Also check mesh if it exists
         if (this.mesh) {

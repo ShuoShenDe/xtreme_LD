@@ -120,9 +120,35 @@ export default class Polyline3D extends THREE.Line {
     raycast(raycaster: THREE.Raycaster, intersects: THREE.Intersection[]) {
         if (!this.visible || this._points.length < 2) return;
 
+        // Ensure world matrix is up to date
+        this.updateMatrixWorld();
+
+        // Store original line threshold
+        const originalThreshold = raycaster.params.Line?.threshold || 10;
+        const camera = (raycaster as any).camera;
+        
+        // Use adaptive threshold if camera is available
+        let enhancedThreshold = originalThreshold;
+        if (camera) {
+            enhancedThreshold = getAdaptiveLineSelectionThreshold(
+                raycaster, 
+                camera, 
+                this, 
+                SELECTION_CONFIG.THRESHOLDS.POLYLINE_MULTIPLIER
+            );
+        } else {
+            enhancedThreshold = originalThreshold * SELECTION_CONFIG.THRESHOLDS.POLYLINE_MULTIPLIER;
+        }
+        
+        // Set enhanced threshold for built-in raycast
+        raycaster.params.Line = { threshold: enhancedThreshold };
+
         // First try Three.js built-in raycast for Line
         const originalIntersects = intersects.slice();
         super.raycast(raycaster, intersects);
+        
+        // Restore original threshold
+        raycaster.params.Line = { threshold: originalThreshold };
         
         // If built-in raycast found intersections, we're done
         if (intersects.length > originalIntersects.length) {
@@ -133,18 +159,12 @@ export default class Polyline3D extends THREE.Line {
         const raycastSetup = setupCommonRaycast(this, raycaster);
         if (!raycastSetup) return;
 
-        // Use a larger threshold for better selection
-        // Try to get camera from raycaster userData (if available)
-        const camera = (raycaster as any).camera;
-        const threshold = camera ? 
-            getAdaptiveLineSelectionThreshold(raycaster, camera, this, SELECTION_CONFIG.THRESHOLDS.POLYLINE_MULTIPLIER) :
-            getLineSelectionThreshold(raycaster, SELECTION_CONFIG.THRESHOLDS.POLYLINE_MULTIPLIER);
         let minDistance = Infinity;
         let closestIntersection: { point: THREE.Vector3; distance: number } | null = null;
 
         // Check all line segments directly without creating temporary arrays
         for (let i = 0; i < this._points.length - 1; i++) {
-            const intersection = raycastLineSegment(raycastSetup.ray, this._points[i], this._points[i + 1], threshold);
+            const intersection = raycastLineSegment(raycastSetup.ray, this._points[i], this._points[i + 1], enhancedThreshold);
             if (intersection && intersection.distance < minDistance) {
                 minDistance = intersection.distance;
                 closestIntersection = intersection;

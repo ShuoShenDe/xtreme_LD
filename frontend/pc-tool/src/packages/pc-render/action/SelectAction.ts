@@ -219,22 +219,30 @@ export default class SelectAction extends Action {
         // 将多边形顶点投影到屏幕空间
         const screenPoints: THREE.Vector2[] = [];
         let totalDepth = 0;
+        let validPointsCount = 0;
         
         for (const point of polygon.points) {
             const worldPoint = point.clone().applyMatrix4(polygon.matrixWorld);
             const screenPoint = worldPoint.clone().project(camera);
             
-            // 转换到屏幕坐标
-            screenPoint.x = (screenPoint.x + 1) * this.renderView.width / 2;
-            screenPoint.y = (-screenPoint.y + 1) * this.renderView.height / 2;
-            
-            screenPoints.push(new THREE.Vector2(screenPoint.x, screenPoint.y));
-            totalDepth += screenPoint.z;
+            // 检查点是否在相机视锥内（z值在-1到1之间表示在近远平面内）
+            if (screenPoint.z > -1 && screenPoint.z < 1) {
+                // 转换到屏幕坐标
+                const screenX = (screenPoint.x + 1) * this.renderView.width / 2;
+                const screenY = (-screenPoint.y + 1) * this.renderView.height / 2;
+                
+                screenPoints.push(new THREE.Vector2(screenX, screenY));
+                totalDepth += screenPoint.z;
+                validPointsCount++;
+            }
         }
+        
+        // 如果没有足够的有效点，无法进行多边形检测
+        if (validPointsCount < 3) return null;
         
         // 检查鼠标点是否在多边形内
         if (this.isPointInPolygon2D(mousePoint, screenPoints)) {
-            const avgDepth = totalDepth / polygon.points.length;
+            const avgDepth = totalDepth / validPointsCount;
             const distance = Math.abs(avgDepth); // 使用平均深度作为距离
             
             return {
@@ -246,8 +254,8 @@ export default class SelectAction extends Action {
         
         // 如果不在多边形内，检查是否靠近边缘
         const edgeDistance = this.getDistanceToPolygonEdges2D(mousePoint, screenPoints);
-        if (edgeDistance < 10) { // 10像素容差
-            const avgDepth = totalDepth / polygon.points.length;
+        if (edgeDistance < 15) { // 增加像素容差从10到15
+            const avgDepth = totalDepth / validPointsCount;
             
             return {
                 object: polygon,
@@ -349,20 +357,23 @@ export default class SelectAction extends Action {
             const startScreen = startWorld.clone().project(camera);
             const endScreen = endWorld.clone().project(camera);
             
-            // 转换到屏幕坐标
-            startScreen.x = (startScreen.x + 1) * this.renderView.width / 2;
-            startScreen.y = (-startScreen.y + 1) * this.renderView.height / 2;
-            endScreen.x = (endScreen.x + 1) * this.renderView.width / 2;
-            endScreen.y = (-endScreen.y + 1) * this.renderView.height / 2;
-            
-            const startScreen2D = new THREE.Vector2(startScreen.x, startScreen.y);
-            const endScreen2D = new THREE.Vector2(endScreen.x, endScreen.y);
-            
-            const distance = this.getDistanceToLineSegment2D(mousePoint, startScreen2D, endScreen2D);
-            
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestDepth = Math.min(startScreen.z, endScreen.z);
+            // 检查线段两端点是否在视锥内
+            if (startScreen.z > -1 && startScreen.z < 1 && endScreen.z > -1 && endScreen.z < 1) {
+                // 转换到屏幕坐标
+                const startScreenX = (startScreen.x + 1) * this.renderView.width / 2;
+                const startScreenY = (-startScreen.y + 1) * this.renderView.height / 2;
+                const endScreenX = (endScreen.x + 1) * this.renderView.width / 2;
+                const endScreenY = (-endScreen.y + 1) * this.renderView.height / 2;
+                
+                const startScreen2D = new THREE.Vector2(startScreenX, startScreenY);
+                const endScreen2D = new THREE.Vector2(endScreenX, endScreenY);
+                
+                const distance = this.getDistanceToLineSegment2D(mousePoint, startScreen2D, endScreen2D);
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestDepth = Math.min(startScreen.z, endScreen.z);
+                }
             }
         }
         
@@ -374,24 +385,27 @@ export default class SelectAction extends Action {
             const startScreen = startWorld.clone().project(camera);
             const endScreen = endWorld.clone().project(camera);
             
-            startScreen.x = (startScreen.x + 1) * this.renderView.width / 2;
-            startScreen.y = (-startScreen.y + 1) * this.renderView.height / 2;
-            endScreen.x = (endScreen.x + 1) * this.renderView.width / 2;
-            endScreen.y = (-endScreen.y + 1) * this.renderView.height / 2;
-            
-            const startScreen2D = new THREE.Vector2(startScreen.x, startScreen.y);
-            const endScreen2D = new THREE.Vector2(endScreen.x, endScreen.y);
-            
-            const distance = this.getDistanceToLineSegment2D(mousePoint, startScreen2D, endScreen2D);
-            
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestDepth = Math.min(startScreen.z, endScreen.z);
+            // 检查闭合线段两端点是否在视锥内
+            if (startScreen.z > -1 && startScreen.z < 1 && endScreen.z > -1 && endScreen.z < 1) {
+                const startScreenX = (startScreen.x + 1) * this.renderView.width / 2;
+                const startScreenY = (-startScreen.y + 1) * this.renderView.height / 2;
+                const endScreenX = (endScreen.x + 1) * this.renderView.width / 2;
+                const endScreenY = (-endScreen.y + 1) * this.renderView.height / 2;
+                
+                const startScreen2D = new THREE.Vector2(startScreenX, startScreenY);
+                const endScreen2D = new THREE.Vector2(endScreenX, endScreenY);
+                
+                const distance = this.getDistanceToLineSegment2D(mousePoint, startScreen2D, endScreen2D);
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestDepth = Math.min(startScreen.z, endScreen.z);
+                }
             }
         }
         
-        // 如果距离小于阈值，认为选中
-        const threshold = 8; // 8像素容差
+        // 如果距离小于阈值，认为选中 - 增加容差
+        const threshold = 12; // 增加像素容差从8到12
         if (minDistance < threshold) {
             return {
                 object: polyline,
@@ -517,8 +531,11 @@ export default class SelectAction extends Action {
     private fallbackRaycastSelection(pos: THREE.Vector2, annotate3D: any[]): THREE.Object3D | null {
         this.raycaster.setFromCamera(pos, this.renderView.camera);
         
-        // 基本的射线投射参数
-        this.raycaster.params.Line = { threshold: SELECTION_CONFIG.THRESHOLDS.LINE };
+        // 将相机信息传递给raycaster，供对象的自定义raycast方法使用
+        (this.raycaster as any).camera = this.renderView.camera;
+        
+        // 基本的射线投射参数 - 使用更宽松的阈值
+        this.raycaster.params.Line = { threshold: SELECTION_CONFIG.THRESHOLDS.LINE * 2 };
         this.raycaster.params.Points = { threshold: SELECTION_CONFIG.THRESHOLDS.POINTS };
         this.raycaster.params.Mesh = { threshold: 1 };
         
@@ -534,8 +551,32 @@ export default class SelectAction extends Action {
         });
         
         if (validIntersects.length > 0) {
-            // 返回距离最近的对象
-            validIntersects.sort((a, b) => a.distance - b.distance);
+            // 按距离和对象类型排序，优先选择更精确的对象类型
+            validIntersects.sort((a, b) => {
+                // 获取对象类型优先级
+                const getPriority = (obj: THREE.Object3D) => {
+                    const name = obj.constructor.name;
+                    switch (name) {
+                        case 'Polygon3D': return 4;
+                        case 'Segmentation3D': return 3;
+                        case 'Box': return 2;
+                        case 'Polyline3D': return 1;
+                        default: return 0;
+                    }
+                };
+                
+                const priorityA = getPriority(a.object);
+                const priorityB = getPriority(b.object);
+                
+                // 首先按优先级排序
+                if (priorityA !== priorityB) {
+                    return priorityB - priorityA;
+                }
+                
+                // 优先级相同时按距离排序
+                return a.distance - b.distance;
+            });
+            
             return validIntersects[0].object;
         }
         
