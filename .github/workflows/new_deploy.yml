@@ -1,0 +1,479 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run nightly tests at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Choose the operation mode'
+        required: true
+        default: 'deploy AWS-Germany'
+        type: choice
+        options:
+          - 'deploy AWS-Germany'
+          - 'deploy AWS-China-Ningxia'
+      enable_e2e_tests:
+        description: 'Enable or disable E2E tests'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+env:
+  ENABLE_E2E_TESTS: ${{ github.event.inputs.enable_e2e_tests || 'false' }}
+  OPERATION: ${{ github.event.inputs.operation || 'deploy AWS-Germany' }}
+
+jobs:
+  build:
+    runs-on: [self-hosted, docker-linux]
+    if: github.event.inputs.operation == 'deploy AWS-Germany' || github.event.inputs.operation == null
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Docker and Docker Compose
+        run: |
+          docker version
+          docker compose version
+
+      - name: Build Docker images
+        run: docker compose build
+
+  # Core functionality test - always runs
+  core-functionality-test:
+    runs-on: [self-hosted, docker-linux]
+    container:
+      image: mcr.microsoft.com/playwright:v1.54.0-noble
+      options: --user root
+    env:
+      CI: "true"
+      npm_config_cache: "${{ github.workspace }}/.npm"
+      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm/
+            e2e-tests/node_modules/
+            frontend/image-tool/node_modules/
+            frontend/pc-tool/node_modules/
+          key: ${{ runner.os }}-core-test-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-core-test-
+
+      - name: Setup Playwright environment
+        run: |
+          echo "=== 使用Docker镜像预装浏览器 ==="
+          ls -la /ms-playwright/
+          cd e2e-tests
+          npm install
+          npx playwright --version
+          echo "创建符号链接让Playwright找到Docker镜像中的所有组件..."
+          mkdir -p node_modules/playwright-core/.local-browsers
+          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+          echo "验证所有符号链接："
+          ls -la node_modules/playwright-core/.local-browsers/
+          echo "验证关键可执行文件："
+          ls -la node_modules/playwright-core/.local-browsers/chromium_headless_shell-1181/ | head -5
+          ls -la node_modules/playwright-core/.local-browsers/ffmpeg-1011/ | head -5
+          echo "=== 设置完成 ==="
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend/image-tool
+          npm ci
+          cd ../pc-tool
+          npm ci
+
+      - name: Run core functionality tests
+        run: |
+          cd e2e-tests
+          chmod +x run-tests.sh
+          ./run-tests.sh core --ci
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core-test-results
+          path: |
+            e2e-tests/test-results/
+            e2e-tests/html-report/
+          retention-days: 3
+
+  # E2E tests - only runs when enabled
+  e2e-tests:
+    runs-on: [self-hosted, docker-linux]
+    container:
+      image: mcr.microsoft.com/playwright:v1.54.0-noble
+      options: --user root
+    if: env.ENABLE_E2E_TESTS == 'true'
+    env:
+      CI: "true"
+      npm_config_cache: "${{ github.workspace }}/.npm"
+      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm/
+            e2e-tests/node_modules/
+            frontend/image-tool/node_modules/
+            frontend/pc-tool/node_modules/
+          key: ${{ runner.os }}-e2e-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-e2e-
+
+      - name: Setup Playwright environment
+        run: |
+          echo "=== 使用Docker镜像预装浏览器 ==="
+          ls -la /ms-playwright/
+          cd e2e-tests
+          npm install
+          npx playwright --version
+          echo "创建符号链接让Playwright找到Docker镜像中的所有组件..."
+          mkdir -p node_modules/playwright-core/.local-browsers
+          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+          echo "验证所有符号链接："
+          ls -la node_modules/playwright-core/.local-browsers/
+          echo "验证关键可执行文件："
+          ls -la node_modules/playwright-core/.local-browsers/chromium_headless_shell-1181/ | head -5
+          ls -la node_modules/playwright-core/.local-browsers/ffmpeg-1011/ | head -5
+          echo "=== 设置完成 ==="
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend/image-tool
+          npm ci
+          cd ../pc-tool
+          npm ci
+
+      - name: Run E2E tests
+        run: |
+          cd e2e-tests
+          chmod +x run-tests.sh
+          ./run-tests.sh all --ci
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            e2e-tests/test-results/
+            e2e-tests/html-report/
+            e2e-tests/playwright-report/
+          retention-days: 7
+
+  # Frontend linting
+  frontend-lint:
+    runs-on: [self-hosted, docker-linux]
+    container:
+      image: node:18-alpine
+    env:
+      npm_config_cache: "${{ github.workspace }}/.npm"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm/
+            frontend/image-tool/node_modules/
+          key: ${{ runner.os }}-lint-${{ hashFiles('frontend/image-tool/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lint-
+
+      - name: Install dependencies
+        run: |
+          cd frontend/image-tool
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd frontend/image-tool
+          npm run lint:eslint || true
+
+      - name: Run TypeScript check
+        run: |
+          cd frontend/image-tool
+          npx tsc --noEmit || true
+
+      - name: Upload lint results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lint-results
+          path: frontend/image-tool/eslint-report.json
+          retention-days: 7
+
+  # Performance tests - only on main branch when E2E enabled
+  performance-tests:
+    runs-on: [self-hosted, docker-linux]
+    container:
+      image: mcr.microsoft.com/playwright:v1.54.0-noble
+      options: --user root
+    if: env.ENABLE_E2E_TESTS == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'schedule')
+    env:
+      CI: "true"
+      npm_config_cache: "${{ github.workspace }}/.npm"
+      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm/
+            e2e-tests/node_modules/
+            frontend/image-tool/node_modules/
+            frontend/pc-tool/node_modules/
+          key: ${{ runner.os }}-performance-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-performance-
+
+      - name: Setup Playwright environment
+        run: |
+          cd e2e-tests
+          npm install
+          mkdir -p node_modules/playwright-core/.local-browsers
+          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend/image-tool
+          npm ci
+          cd ../pc-tool
+          npm ci
+
+      - name: Run performance tests
+        continue-on-error: true
+        run: |
+          cd e2e-tests
+          chmod +x run-tests.sh
+          ./run-tests.sh performance --ci
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-test-results
+          path: |
+            e2e-tests/test-results/
+            e2e-tests/html-report/
+          retention-days: 7
+
+  # Visual regression tests - only on main branch when E2E enabled
+  visual-regression-tests:
+    runs-on: [self-hosted, docker-linux]
+    container:
+      image: mcr.microsoft.com/playwright:v1.54.0-noble
+      options: --user root
+    if: env.ENABLE_E2E_TESTS == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'schedule')
+    env:
+      CI: "true"
+      npm_config_cache: "${{ github.workspace }}/.npm"
+      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm/
+            e2e-tests/node_modules/
+            frontend/image-tool/node_modules/
+            frontend/pc-tool/node_modules/
+          key: ${{ runner.os }}-visual-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-visual-
+
+      - name: Setup Playwright environment
+        run: |
+          cd e2e-tests
+          npm install
+          mkdir -p node_modules/playwright-core/.local-browsers
+          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend/image-tool
+          npm ci
+          cd ../pc-tool
+          npm ci
+
+      - name: Run visual regression tests
+        continue-on-error: true
+        run: |
+          cd e2e-tests
+          chmod +x run-tests.sh
+          ./run-tests.sh visual --ci
+
+      - name: Upload visual test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-regression-results
+          path: |
+            e2e-tests/test-results/
+            e2e-tests/html-report/
+          retention-days: 14
+
+  # Deploy to AWS Germany
+  deploy-aws-germany:
+    runs-on: [self-hosted, docker-linux]
+    needs: [core-functionality-test]
+    if: github.ref == 'refs/heads/main' && (github.event.inputs.operation == 'deploy AWS-Germany' || github.event.inputs.operation == null)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        run: |
+          docker version
+          docker compose version
+          export RUNNER_UID=$(id -u)
+          export RUNNER_GID=$(id -g)
+
+      - name: Deploy application
+        run: |
+          docker compose down --remove-orphans
+          docker compose up -d
+
+      - name: Cleanup Docker images
+        run: |
+          docker image prune -f || true
+
+  # Deploy to AWS China Ningxia
+  deploy-aws-china:
+    runs-on: [self-hosted, docker-linux]
+    needs: [core-functionality-test]
+    if: github.ref == 'refs/heads/main' && github.event.inputs.operation == 'deploy AWS-China-Ningxia'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup environment for China deployment
+        run: |
+          docker version
+          docker compose version
+          export RUNNER_UID=$(id -u)
+          export RUNNER_GID=$(id -g)
+          echo "LD_MOUNT_DATA_PATH=/mnt" > .env
+
+      - name: Build and deploy to China
+        run: |
+          docker compose build
+          docker compose down --remove-orphans
+          docker compose up -d
+
+  # Nightly comprehensive tests
+  nightly-tests:
+    runs-on: [self-hosted, docker-linux]
+    container:
+      image: mcr.microsoft.com/playwright:v1.54.0-noble
+      options: --user root
+    if: github.event_name == 'schedule' && env.ENABLE_E2E_TESTS == 'true'
+    env:
+      CI: "true"
+      npm_config_cache: "${{ github.workspace }}/.npm"
+      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+      TEST_SCOPE: "comprehensive"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm/
+            e2e-tests/node_modules/
+            frontend/image-tool/node_modules/
+            frontend/pc-tool/node_modules/
+          key: ${{ runner.os }}-nightly-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Setup Playwright environment
+        run: |
+          cd e2e-tests
+          npm install
+          mkdir -p node_modules/playwright-core/.local-browsers
+          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend/image-tool
+          npm ci
+          cd ../pc-tool
+          npm ci
+
+      - name: Run comprehensive nightly tests
+        run: |
+          cd e2e-tests
+          chmod +x run-tests.sh
+          ./run-tests.sh all --ci
+
+      - name: Upload nightly test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-test-results
+          path: |
+            e2e-tests/test-results/
+            e2e-tests/html-report/
+            e2e-tests/playwright-report/
+          retention-days: 7
+
+  # Weekend cleanup job
+  weekend-cleanup:
+    runs-on: [self-hosted, docker-linux]
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Docker system cleanup
+        continue-on-error: true
+        run: |
+          echo "执行定期清理..."
+          docker system prune -f || true
+          echo "清理完成"
