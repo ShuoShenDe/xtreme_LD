@@ -1,0 +1,97 @@
+name: Deploy Workflow
+
+on:
+  push:
+    branches:
+      - main  # 相当于 CI_COMMIT_BRANCH == CI_DEFAULT_BRANCH
+  workflow_dispatch:   # 手动触发 + 参数选择
+    inputs:
+      operation:
+        description: 'Choose the operation mode'
+        required: true
+        default: 'deploy AWS-Germany'
+        type: choice
+        options:
+          - deploy AWS-Germany
+          - deploy AWS-China-Ningxia
+      ENABLE_E2E_TESTS:
+        description: 'Enable or disable E2E tests'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - true
+          - false
+
+env:
+  ENABLE_E2E_TESTS: ${{ inputs.ENABLE_E2E_TESTS }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: [self-hosted, lddata11]
+    if: ${{ github.event.inputs.operation == 'deploy AWS-Germany' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build Docker
+        run: |
+          docker version
+          docker compose version
+          docker compose build
+
+  core-tests:
+    name: Core Tests
+    runs-on: [self-hosted, lddata11]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install & Run
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh core --ci
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: [self-hosted, lddata11]
+    if: ${{ env.ENABLE_E2E_TESTS == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Prepare
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh all --ci
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-reports
+          path: |
+            e2e-tests/test-results/
+            e2e-tests/html-report/
+            e2e-tests/playwright-report/
+
+  deploy-germany:
+    name: Deploy to AWS Germany
+    needs: [build, core-tests, e2e-tests]
+    runs-on: [self-hosted, lddata11]
+    if: ${{ github.event.inputs.operation == 'deploy AWS-Germany' && github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Deploy
+        run: |
+          docker compose down
+          docker compose up -d
+          docker image prune -f || true
+
+  deploy-ningxia:
+    name: Deploy to AWS China Ningxia
+    needs: [build, core-tests, e2e-tests]
+    runs-on: [self-hosted, lddata11]
+    if: ${{ github.event.inputs.operation == 'deploy AWS-China-Ningxia' && github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Deploy
+        run: |
+          echo "LD_MOUNT_DATA_PATH=/mnt" > .env
+          docker-compose build
+          docker-compose down --remove-orphans
+          docker-compose up -d
