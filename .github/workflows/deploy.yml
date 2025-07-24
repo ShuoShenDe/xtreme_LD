@@ -77,7 +77,6 @@ jobs:
     steps:
       - name: Deploy
         run: |
-          echo "LD_MOUNT_DATA_PATH=/mnt" > .env
           docker-compose build
           docker-compose down --remove-orphans
           docker-compose up -d
