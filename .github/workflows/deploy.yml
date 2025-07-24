@@ -24,7 +24,7 @@ on:
           - false
 
 env:
-  ENABLE_E2E_TESTS: ${{ inputs.ENABLE_E2E_TESTS }}
+  ENABLE_E2E_TESTS: ${{ github.event.inputs.ENABLE_E2E_TESTS }}
 
 jobs:
   build:
