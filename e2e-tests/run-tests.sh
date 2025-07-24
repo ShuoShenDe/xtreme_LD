@@ -197,6 +197,7 @@ install_dependencies() {
     (cd ../frontend/pc-tool && npm install)
     
     print_info "安装Image-Tool依赖..."
+    echo "PWD=$(pwd)"
     (cd ../frontend/image-tool && npm install)
     
     # 安装Playwright浏览器
@@ -619,6 +620,7 @@ start_dev_servers() {
     
     # 获取绝对路径
     local current_dir=$(pwd)
+    echo "PWD=$(pwd)"
     local image_tool_path="$current_dir/../frontend/image-tool"
     local pc_tool_path="$current_dir/../frontend/pc-tool"
     
