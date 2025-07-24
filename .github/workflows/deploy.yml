@@ -23,9 +23,6 @@ on:
           - true
           - false
 
-env:
-  ENABLE_E2E_TESTS: ${{ github.event.inputs.ENABLE_E2E_TESTS }}
-
 jobs:
   build:
     name: Build
