@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>团队效率管理</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .team-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .team-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .team-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .team-table th,
+        .team-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .team-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        .team-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .rank-1 { color: #28a745; font-weight: bold; }
+        .rank-2 { color: #17a2b8; font-weight: bold; }
+        .rank-3 { color: #ffc107; font-weight: bold; }
+        .efficiency-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .efficiency-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc3545, #ffc107, #28a745);
+            transition: width 0.3s ease;
+        }
+        .filter-controls {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .filter-controls select,
+        .filter-controls input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .filter-controls button {
+            padding: 8px 16px;
+            background-color: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .filter-controls button:hover {
+            background-color: #5a6fd8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>团队效率管理</h1>
+            <p>项目: <span id="projectName">Xtreme1标注项目</span> | 更新时间: <span id="updateTime"></span></p>
+        </div>
+
+        <div class="filter-controls">
+            <label>时间范围:</label>
+            <select id="timeRange">
+                <option value="7">最近7天</option>
+                <option value="30">最近30天</option>
+                <option value="90">最近90天</option>
+            </select>
+            
+            <label>工具类型:</label>
+            <select id="toolType">
+                <option value="">全部工具</option>
+                <option value="pc-tool">PC工具</option>
+                <option value="image-tool">图像工具</option>
+                <option value="text-tool">文本工具</option>
+            </select>
+            
+            <button onclick="loadTeamData()">刷新数据</button>
+        </div>
+
+        <div class="team-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalUsers">0</div>
+                <div class="stat-label">活跃用户</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalAnnotations">0</div>
+                <div class="stat-label">总标注数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgEfficiency">0%</div>
+                <div class="stat-label">平均效率</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="completionRate">0%</div>
+                <div class="stat-label">完成率</div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3>团队效率分布</h3>
+                <canvas id="efficiencyDistributionChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>工具使用情况</h3>
+                <canvas id="toolUsageChart"></canvas>
+            </div>
+        </div>
+
+        <div class="team-table">
+            <h3 style="padding: 20px; margin: 0;">团队成员排名</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>排名</th>
+                        <th>用户ID</th>
+                        <th>标注数量</th>
+                        <th>平均效率</th>
+                        <th>改进率</th>
+                        <th>技能水平</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="teamTableBody">
+                    <!-- 动态填充 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const CACHE_BUSTER = 1752584680;
+        const API_BASE = 'http://localhost:8001/api/v1/events';
+        const TEAM_USERS = ['user-001', 'user-002', 'user-003', 'user-004', 'user-005'];
+
+        // 模拟团队数据（实际应用中从API获取）
+        const mockTeamData = {
+            'user-001': { annotations: 156, efficiency: 0.85, improvement: 12.5, skill: 'expert' },
+            'user-002': { annotations: 142, efficiency: 0.78, improvement: 8.2, skill: 'intermediate' },
+            'user-003': { annotations: 98, efficiency: 0.72, improvement: 15.8, skill: 'beginner' },
+            'user-004': { annotations: 134, efficiency: 0.81, improvement: 6.5, skill: 'intermediate' },
+            'user-005': { annotations: 87, efficiency: 0.68, improvement: 22.1, skill: 'beginner' }
+        };
+
+        // 加载团队数据
+        async function loadTeamData() {
+            const timeRange = document.getElementById('timeRange').value;
+            const toolType = document.getElementById('toolType').value;
+            
+            try {
+                // 更新团队统计
+                updateTeamStats();
+                
+                // 更新图表
+                createEfficiencyDistributionChart();
+                createToolUsageChart();
+                
+                // 更新团队表格
+                updateTeamTable();
+                
+                document.getElementById('updateTime').textContent = new Date().toLocaleString();
+                
+            } catch (error) {
+                console.error('加载团队数据失败:', error);
+            }
+        }
+
+        // 更新团队统计
+        function updateTeamStats() {
+            const users = Object.values(mockTeamData);
+            const totalAnnotations = users.reduce((sum, user) => sum + user.annotations, 0);
+            const avgEfficiency = users.reduce((sum, user) => sum + user.efficiency, 0) / users.length;
+            
+            document.getElementById('totalUsers').textContent = users.length;
+            document.getElementById('totalAnnotations').textContent = totalAnnotations;
+            document.getElementById('avgEfficiency').textContent = `${(avgEfficiency * 100).toFixed(1)}%`;
+            document.getElementById('completionRate').textContent = '85.2%'; // 模拟数据
+        }
+
+        // 创建效率分布图
+        function createEfficiencyDistributionChart() {
+            const ctx = document.getElementById('efficiencyDistributionChart').getContext('2d');
+            
+            if (window.efficiencyDistributionChart) {
+                window.efficiencyDistributionChart.destroy();
+            }
+            
+            const users = Object.values(mockTeamData);
+            const efficiencyRanges = {
+                '高 (>80%)': users.filter(u => u.efficiency > 0.8).length,
+                '中 (60-80%)': users.filter(u => u.efficiency >= 0.6 && u.efficiency <= 0.8).length,
+                '低 (<60%)': users.filter(u => u.efficiency < 0.6).length
+            };
+            
+            window.efficiencyDistributionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(efficiencyRanges),
+                    datasets: [{
+                        data: Object.values(efficiencyRanges),
+                        backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 创建工具使用情况图
+        function createToolUsageChart() {
+            const ctx = document.getElementById('toolUsageChart').getContext('2d');
+            
+            if (window.toolUsageChart) {
+                window.toolUsageChart.destroy();
+            }
+            
+            // 模拟工具使用数据
+            const toolData = {
+                'PC工具': 45,
+                '图像工具': 35,
+                '文本工具': 20
+            };
+            
+            window.toolUsageChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(toolData),
+                    datasets: [{
+                        label: '使用次数',
+                        data: Object.values(toolData),
+                        backgroundColor: ['#667eea', '#764ba2', '#f093fb']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新团队表格
+        function updateTeamTable() {
+            const tbody = document.getElementById('teamTableBody');
+            tbody.innerHTML = '';
+            
+            // 按效率排序
+            const sortedUsers = Object.entries(mockTeamData)
+                .sort(([,a], [,b]) => b.efficiency - a.efficiency);
+            
+            sortedUsers.forEach(([userId, data], index) => {
+                const row = document.createElement('tr');
+                const rank = index + 1;
+                
+                row.innerHTML = `
+                    <td class="rank-${rank <= 3 ? rank : ''}">${rank}</td>
+                    <td>${userId}</td>
+                    <td>${data.annotations}</td>
+                    <td>
+                        ${(data.efficiency * 100).toFixed(1)}%
+                        <div class="efficiency-bar">
+                            <div class="efficiency-fill" style="width: ${data.efficiency * 100}%"></div>
+                        </div>
+                    </td>
+                    <td>${data.improvement > 0 ? '+' : ''}${data.improvement.toFixed(1)}%</td>
+                    <td>${getSkillLevelText(data.skill)}</td>
+                    <td>
+                        <button onclick="viewUserDetails('${userId}')" style="padding: 4px 8px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            详情
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // 获取技能水平文本
+        function getSkillLevelText(skill) {
+            const skillMap = {
+                'beginner': '初学者',
+                'intermediate': '中级',
+                'expert': '专家'
+            };
+            return skillMap[skill] || skill;
+        }
+
+        // 查看用户详情
+        function viewUserDetails(userId) {
+            alert(`查看用户 ${userId} 的详细分析报告`);
+            // 这里可以打开模态框或跳转到用户详情页面
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', loadTeamData);
+
+        // 每10分钟刷新一次数据
+        setInterval(loadTeamData, 10 * 60 * 1000);
+    </script>
+</body>
+</html> 

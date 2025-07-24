@@ -1,0 +1,143 @@
+# Docker Compose配置 - Xtreme1效率监控服务
+
+services:
+  # PostgreSQL数据库
+  efficiency-postgres:
+    image: postgres:14
+    container_name: efficiency_postgres
+    environment:
+      POSTGRES_DB: xtreme1_efficiency
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"  # 使用5433端口避免与主系统冲突
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init/V1__Initial_schema.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - efficiency_network
+    restart: unless-stopped
+
+  # InfluxDB时序数据库
+  efficiency-influxdb:
+    image: influxdb:2.0
+    container_name: efficiency_influxdb
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=xtreme1
+      - DOCKER_INFLUXDB_INIT_BUCKET=efficiency_events
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=Y7anaf-f1yBZaDe3M1pCy5LdfVTxH8g8odTzf0UOJd_0V4BROJmQ7HlFDTLefh8GIoWNNkOgKHdnKAeR7KMhqw==
+    ports:
+      - "8087:8086"  # 使用8087端口避免冲突
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    networks:
+      - efficiency_network
+    restart: unless-stopped
+
+  # Redis缓存
+  efficiency-redis:
+    image: redis:7-alpine
+    container_name: efficiency_redis
+    ports:
+      - "6380:6379"  # 使用6380端口避免冲突
+    volumes:
+      - redis_data:/data
+    networks:
+      - efficiency_network
+    restart: unless-stopped
+
+  # 效率监控服务
+  efficiency_service:
+    build: .
+    container_name: efficiency_service
+    depends_on:
+      - efficiency-postgres
+      - efficiency-influxdb
+      - efficiency-redis
+    environment:
+      - ENVIRONMENT=production
+      - POSTGRES_HOST=efficiency-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=xtreme1_efficiency
+      - INFLUXDB_HOST=efficiency-influxdb
+      - INFLUXDB_PORT=8086
+      - INFLUXDB_TOKEN=Y7anaf-f1yBZaDe3M1pCy5LdfVTxH8g8odTzf0UOJd_0V4BROJmQ7HlFDTLefh8GIoWNNkOgKHdnKAeR7KMhqw==
+      - INFLUXDB_ORG=xtreme1
+      - INFLUXDB_BUCKET=efficiency_events
+      - REDIS_HOST=efficiency-redis
+      - REDIS_PORT=6379
+    ports:
+      - "8001:8001"
+    volumes:
+      # 挂载 examples 目录实现热更新
+      - ./examples:/app/examples
+      # 挂载日志目录（可选）
+      - ./logs:/app/logs
+    networks:
+      - efficiency_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker (后台任务处理)
+  efficiency_worker:
+    build: .
+    container_name: efficiency_worker
+    depends_on:
+      - efficiency-postgres
+      - efficiency-influxdb
+      - efficiency-redis
+    environment:
+      - ENVIRONMENT=production
+      - POSTGRES_HOST=efficiency-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=xtreme1_efficiency
+      - INFLUXDB_HOST=efficiency-influxdb
+      - INFLUXDB_PORT=8086
+      - INFLUXDB_TOKEN=Y7anaf-f1yBZaDe3M1pCy5LdfVTxH8g8odTzf0UOJd_0V4BROJmQ7HlFDTLefh8GIoWNNkOgKHdnKAeR7KMhqw==
+      - INFLUXDB_ORG=xtreme1
+      - INFLUXDB_BUCKET=efficiency_events
+      - REDIS_HOST=efficiency-redis
+      - REDIS_PORT=6379
+    command: celery -A app.celery_app worker --loglevel=info
+    volumes:
+      # 挂载日志目录
+      - ./logs:/app/logs
+    networks:
+      - efficiency_network
+    restart: unless-stopped
+
+  # Celery Flower (监控界面，可选)
+  flower:
+    build: .
+    container_name: efficiency_flower
+    depends_on:
+      - efficiency-redis
+    environment:
+      - REDIS_HOST=efficiency-redis
+      - REDIS_PORT=6379
+    command: celery -A app.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    networks:
+      - efficiency_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  influxdb_data:
+  redis_data:
+
+networks:
+  efficiency_network:
+    driver: bridge 

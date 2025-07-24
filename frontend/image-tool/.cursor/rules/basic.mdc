@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- 本项目是基于开源项目 xtreme1 进行修改的, 为了保证后续上游项目更新后能够尽量减少代码合并的冲突. 本项目在开发过程中的修改尽量放到自己单独的文件夹中. 比如目前 api 请求相关的代码放到了 `src/ltmApi/` 中, 新增的组件放到了 `src/ltmComponents/` 中, 新增的 i18n 翻译放到了 `src/ltmLocales/` 中. 由于 pinia 是新引入的, 因此直接放到了 `src/stores` 中.
+- 本项目的后端是以 jsonapi 的形式返回的数据.
+- 本项目中使用的组件库和图标库为 `ant-design-vue` 和 `@ant-design/icons-vue`.
+- 本项目很多的功能都在旧版的工具软件上实现了. 因此经常会提示根据旧版的程序完成功能的移植请求. 此时你应该尽可能的对旧版代码进行优化, 提高代码的可读性以及使用 `useXxx.ts` 这样的 composable 组织代码.
+

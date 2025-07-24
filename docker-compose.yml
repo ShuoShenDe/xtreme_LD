@@ -1,0 +1,311 @@
+services:
+  nginx:
+    image: nginx:1.22
+    restart: always
+    ports:
+      - 8190:80
+    volumes:
+      - ./deploy/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+      - ./xtreme1_relay.html:/usr/share/nginx/html/xtreme1_relay.html
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - xtreme1_network
+      
+  mysql:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ImOxO8Lz
+      MYSQL_DATABASE: xtreme1
+      MYSQL_USER: xtreme1
+      MYSQL_PASSWORD: Rc4K3L6f
+    ports:
+      - 8191:3306
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./deploy/mysql/custom.cnf:/etc/mysql/conf.d/custom.cnf
+      - ./deploy/mysql/migration:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: '/usr/bin/mysql --user=xtreme1 --password=Rc4K3L6f --execute "SHOW DATABASES;"'
+      interval: 10s
+      timeout: 10s
+      start_period: 10s
+      retries: 10
+    networks:
+      - xtreme1_network
+      
+  redis:
+    image: redis:6.2
+    restart: always
+    ports:
+      - 8192:6379
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 10s
+      start_period: 10s
+      retries: 10
+    networks:
+      - xtreme1_network
+      
+  minio:
+    image: bitnami/minio:2022.9.1
+    restart: always
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: 1tQB970y
+      MINIO_DEFAULT_BUCKETS: xtreme1:download
+    ports:
+      - 8193:9000
+      - 8194:9001
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--silent",
+          "-f",
+          "http://minio:9000/minio/health/ready"
+        ]
+      interval: 10s
+      timeout: 10s
+      start_period: 10s
+      retries: 10
+    networks:
+      - xtreme1_network
+      
+  backend:
+    # By default, Compose will pull image from Docker Hub when no local image found.
+    # image: basicai/xtreme1-backend:v0.9.1
+    # pull_policy: always
+    # Uncomment this line and comment previous line to build image locally, not pull from Docker Hub.
+    build: ./backend
+    restart: always
+    ports:
+      - 8290:8080
+    environment:
+      # MinIO Host configuration - can be overridden by .env file or environment variables
+      MINIO_HOST: ${MINIO_HOST:-minio:8193}
+    # volumes:
+    # Using customized application.yml to override default configs.
+    #   - /host/path/to/customized/application.yml:/app/config/application.yml
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--silent",
+          "-f",
+          "http://backend:8080/actuator/health"
+        ]
+      interval: 10s
+      timeout: 10s
+      start_period: 10s
+      retries: 30
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - xtreme1_network
+      
+  frontend:
+    # By default, Compose will pull image from Docker Hub when no local image found.
+    # image: basicai/xtreme1-frontend:v0.9.1
+    # pull_policy: always
+    # Uncomment this line and comment previous line to build image locally, not pull from Docker Hub.
+    build: ./frontend
+    restart: always
+    ports:
+      - 8291:80
+    networks:
+      - xtreme1_network
+      
+  pcd-tools:
+    image: basicai/xtreme1-pcd-tools
+    restart: always
+    pull_policy: always
+    ports:
+      - 8295:5000
+    networks:
+      - xtreme1_network
+      
+  image-vect-visualization:
+    image: basicai/xtreme1-image-vect-visualization
+    restart: always
+    pull_policy: always
+    ports:
+      - 8294:5000
+    networks:
+      - xtreme1_network
+      
+  image-object-detection:
+    image: basicai/xtreme1-image-object-detection
+    restart: always
+    pull_policy: always
+    ports:
+      - 8292:5000
+    # You need to explicitly specify model profile to start this service.
+    profiles:
+      - model
+    runtime: nvidia
+    networks:
+      - xtreme1_network
+      
+  point-cloud-object-detection:
+    image: basicai/xtreme1-point-cloud-object-detection
+    restart: always
+    pull_policy: always
+    ports:
+      - 8293:5000
+    # You need to explicitly specify model profile to start this service.
+    profiles:
+      - model
+    runtime: nvidia
+    networks:
+      - xtreme1_network
+
+  # Efficiency Monitoring Services
+  efficiency-postgres:
+    image: postgres:14
+    container_name: efficiency_postgres
+    environment:
+      POSTGRES_DB: xtreme1_efficiency
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - efficiency-postgres-data:/var/lib/postgresql/data
+      - ./efficiency-service/db/init/V1__Initial_schema.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - xtreme1_network
+    restart: unless-stopped
+
+  efficiency-influxdb:
+    image: influxdb:2.0
+    container_name: efficiency_influxdb
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=xtreme1
+      - DOCKER_INFLUXDB_INIT_BUCKET=efficiency_events
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=Y7anaf-f1yBZaDe3M1pCy5LdfVTxH8g8odTzf0UOJd_0V4BROJmQ7HlFDTLefh8GIoWNNkOgKHdnKAeR7KMhqw==
+    ports:
+      - "8087:8086"
+    volumes:
+      - efficiency-influxdb-data:/var/lib/influxdb2
+    networks:
+      - xtreme1_network
+    restart: unless-stopped
+
+  efficiency-redis:
+    image: redis:7-alpine
+    container_name: efficiency_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - efficiency-redis-data:/data
+    networks:
+      - xtreme1_network
+    restart: unless-stopped
+
+  efficiency-service:
+    build: ./efficiency-service
+    container_name: efficiency_service
+    depends_on:
+      - efficiency-postgres
+      - efficiency-influxdb
+      - efficiency-redis
+    environment:
+      - ENVIRONMENT=production
+      - POSTGRES_HOST=efficiency-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=xtreme1_efficiency
+      - INFLUXDB_HOST=efficiency-influxdb
+      - INFLUXDB_PORT=8086
+      - INFLUXDB_TOKEN=Y7anaf-f1yBZaDe3M1pCy5LdfVTxH8g8odTzf0UOJd_0V4BROJmQ7HlFDTLefh8GIoWNNkOgKHdnKAeR7KMhqw==
+      - INFLUXDB_ORG=xtreme1
+      - INFLUXDB_BUCKET=efficiency_events
+      - REDIS_HOST=efficiency-redis
+      - REDIS_PORT=6379
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./efficiency-service/examples:/app/examples
+      - ./efficiency-service/logs:/app/logs
+    networks:
+      - xtreme1_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  efficiency-worker:
+    build: ./efficiency-service
+    container_name: efficiency_worker
+    depends_on:
+      - efficiency-postgres
+      - efficiency-influxdb
+      - efficiency-redis
+    environment:
+      - ENVIRONMENT=production
+      - POSTGRES_HOST=efficiency-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=xtreme1_efficiency
+      - INFLUXDB_HOST=efficiency-influxdb
+      - INFLUXDB_PORT=8086
+      - INFLUXDB_TOKEN=Y7anaf-f1yBZaDe3M1pCy5LdfVTxH8g8odTzf0UOJd_0V4BROJmQ7HlFDTLefh8GIoWNNkOgKHdnKAeR7KMhqw==
+      - INFLUXDB_ORG=xtreme1
+      - INFLUXDB_BUCKET=efficiency_events
+      - REDIS_HOST=efficiency-redis
+      - REDIS_PORT=6379
+    command: celery -A app.celery_app worker --loglevel=info
+    volumes:
+      - ./efficiency-service/logs:/app/logs
+    networks:
+      - xtreme1_network
+    restart: unless-stopped
+
+  efficiency-flower:
+    build: ./efficiency-service
+    container_name: efficiency_flower
+    depends_on:
+      - efficiency-redis
+    environment:
+      - REDIS_HOST=efficiency-redis
+      - REDIS_PORT=6379
+    command: celery -A app.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    networks:
+      - xtreme1_network
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  redis-data:
+  minio-data:
+  efficiency-postgres-data:
+  efficiency-influxdb-data:
+  efficiency-redis-data:
+
+networks:
+  xtreme1_network:
+    driver: bridge

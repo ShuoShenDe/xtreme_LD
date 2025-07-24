@@ -1,0 +1,87 @@
+local/
+application-local.yml
+target/
+
+dist/
+node_modules/
+
+docker-compose.develop.yml
+docker-compose.override.yml
+
+## local ##
+frontend/**/vite.config.local.*
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### MacOS ###
+.DS_Store
+
+frontend/image-tool/ltmRef
+
+### Efficiency Service ###
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs directory
+efficiency-service/logs/
+logs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker volumes (if using local bind mounts)
+efficiency-service/postgres_data/
+efficiency-service/influxdb_data/
+efficiency-service/redis_data/
+
+# Temporary files
+*.tmp
+*.temp
+Thumbs.db
+tools
+
+# E2E Testing
+e2e-tests/test-results/
+e2e-tests/playwright-report/
+e2e-tests/node_modules/
+e2e-tests/package-lock.json
+e2e-tests/.playwright/
+e2e-tests/html-report/

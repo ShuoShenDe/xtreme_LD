@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人效率分析 - ISS 标注专项分析</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        .header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        .user-selector {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .user-selector select {
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            background: white;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 1px solid #e3e8f0;
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .stat-detail {
+            font-size: 0.9em;
+            color: #888;
+        }
+        
+        /* ISS 专项分析样式 */
+        .iss-analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        .iss-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .iss-card h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.3em;
+        }
+        .iss-metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+        }
+        .iss-metric:last-child {
+            border-bottom: none;
+        }
+        .iss-value {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+            border: 1px solid #e3e8f0;
+        }
+        .chart-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+        .analysis-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+            border: 1px solid #e3e8f0;
+        }
+        .analysis-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fc;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+        .analysis-item h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .analysis-item p {
+            margin: 0;
+            color: #666;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .error {
+            background: #ffe6e6;
+            color: #d63031;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #e6f7ff;
+            color: #0984e3;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        .interaction-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .interaction-item {
+            padding: 10px;
+            background: #f0f8ff;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .interaction-count {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .interaction-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        /* 时间线样式 */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #667eea;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+            background: #f8f9fc;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -22px;
+            top: 20px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>🎯 ISS 标注效率深度分析</h1>
+            <p>多边形标注时间 | 帧标注时间 | 用户空闲时间 专项分析</p>
+        </div>
+
+        <div class="user-selector">
+            <label for="userSelect">选择用户: </label>
+            <select id="userSelect" onchange="loadUserData()">
+                <option value="temp_user_001">temp_user_001 (高频用户)</option>
+                <option value="test_user_001">test_user_001 (全功能用户)</option>
+            </select>
+        </div>
+
+        <div id="loadingIndicator" class="loading">
+            🔄 正在分析 ISS 标注数据...
+        </div>
+
+        <div id="dashboardContent" style="display: none;">
+            <!-- 基础统计卡片 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalEvents">-</div>
+                    <div class="stat-label">总操作事件</div>
+                    <div class="stat-detail" id="eventDetail">包含标注和交互</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="annotationEvents">-</div>
+                    <div class="stat-label">标注事件</div>
+                    <div class="stat-detail" id="annotationDetail">多边形标注操作</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgPerformance">-</div>
+                    <div class="stat-label">平均性能</div>
+                    <div class="stat-detail" id="performanceDetail">FPS指标</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="efficiencyScore">-</div>
+                    <div class="stat-label">效率评分</div>
+                    <div class="stat-detail" id="efficiencyDetail">综合评估</div>
+                </div>
+            </div>
+
+            <!-- ISS 专项分析 -->
+            <div class="iss-analysis-grid">
+                <div class="iss-card">
+                    <h3>🔺 单个多边形标注时间</h3>
+                    <div class="iss-metric">
+                        <span>平均标注时间:</span>
+                        <span class="iss-value" id="avgPolygonTime">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>最快标注:</span>
+                        <span class="iss-value" id="minPolygonTime">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>最慢标注:</span>
+                        <span class="iss-value" id="maxPolygonTime">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>完成率:</span>
+                        <span class="iss-value" id="polygonCompletionRate">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>每分钟多边形数:</span>
+                        <span class="iss-value" id="polygonsPerMinute">-</span>
+                    </div>
+                </div>
+
+                <div class="iss-card">
+                    <h3>🖼️ 帧标注总时间</h3>
+                    <div class="iss-metric">
+                        <span>平均帧时间:</span>
+                        <span class="iss-value" id="avgFrameTime">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>每帧多边形数:</span>
+                        <span class="iss-value" id="polygonsPerFrame">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>帧效率比率:</span>
+                        <span class="iss-value" id="frameEfficiencyRatio">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>总帧数:</span>
+                        <span class="iss-value" id="totalFrames">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>帧完成度:</span>
+                        <span class="iss-value" id="frameCompleteness">-</span>
+                    </div>
+                </div>
+
+                <div class="iss-card">
+                    <h3>⏸️ 用户空闲时间</h3>
+                    <div class="iss-metric">
+                        <span>平均空闲时长:</span>
+                        <span class="iss-value" id="avgIdleTime">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>总空闲时间:</span>
+                        <span class="iss-value" id="totalIdleTime">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>空闲频率:</span>
+                        <span class="iss-value" id="idleFrequency">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>活跃时间占比:</span>
+                        <span class="iss-value" id="activeTimeRatio">-</span>
+                    </div>
+                    <div class="iss-metric">
+                        <span>工作专注度:</span>
+                        <span class="iss-value" id="focusLevel">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 标注时间趋势图 -->
+            <div class="chart-container">
+                <div class="chart-title">📈 标注时间趋势分析</div>
+                <canvas id="annotationTrendChart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- 效率分布图 -->
+            <div class="chart-container">
+                <div class="chart-title">🎯 效率分布分析</div>
+                <canvas id="efficiencyDistributionChart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- 时间线分析 -->
+            <div class="analysis-section">
+                <h3>⏱️ 标注操作时间线</h3>
+                <div id="annotationTimeline" class="timeline">
+                    <!-- 时间线将在这里动态生成 -->
+                </div>
+            </div>
+
+            <!-- 个性化分析报告 -->
+            <div class="analysis-section">
+                <h3>🎯 ISS 标注效率分析</h3>
+                <div id="issAnalysis">
+                    <!-- ISS 分析将在这里显示 -->
+                </div>
+            </div>
+
+            <!-- 优化建议 -->
+            <div class="analysis-section">
+                <h3>💡 ISS 标注优化建议</h3>
+                <div id="issRecommendations">
+                    <!-- 建议将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">
+        状态: 正在初始化... | 数据源: InfluxDB | 版本: ISS Analysis v1.0
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const CACHE_BUSTER = 1752584680;
+        const API_BASE = 'http://localhost:8001';
+        let currentUser = 'temp_user_001';
+        let charts = {};
+
+        // 用户配置文件
+        const USER_PROFILES = {
+            'temp_user_001': {
+                name: '高频操作用户',
+                description: '该用户在图像标注工具中表现出高频率的操作模式',
+                timezone: 'Europe/Berlin',
+                primaryTool: 'image-tool'
+            },
+            'test_user_001': {
+                name: '全功能测试用户', 
+                description: '该用户展示了完整的标注工作流程',
+                timezone: 'Asia/Shanghai',
+                primaryTool: 'mixed-tools'
+            }
+        };
+
+        function updateStatus(message) {
+            const statusBar = document.getElementById('statusBar');
+            const timestamp = new Date().toLocaleTimeString();
+            statusBar.textContent = `状态: ${message} | 时间: ${timestamp} | 用户: ${currentUser}`;
+        }
+
+        async function loadUserData() {
+            const userSelect = document.getElementById('userSelect');
+            currentUser = userSelect.value;
+            
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('dashboardContent').style.display = 'none';
+            
+            updateStatus('正在分析 ISS 标注数据...');
+
+            try {
+                // 获取原始统计数据
+                let rawData = null;
+                let dataSource = 'api';
+                
+                try {
+                    const rawDataResponse = await fetch(`${API_BASE}/api/v1/events/raw-stats/${currentUser}?days=30`);
+                    if (rawDataResponse.ok) {
+                        rawData = await rawDataResponse.json();
+                        rawData.data_source = 'real_api';
+                        updateStatus(`✅ 已获取${currentUser}的实时数据 (${rawData.total_events}个事件)`);
+                    } else {
+                        throw new Error(`API响应错误: ${rawDataResponse.status}`);
+                    }
+                } catch (apiError) {
+                    console.warn('API获取失败，使用回退数据:', apiError);
+                    rawData = generateSimulatedIssData(currentUser);
+                    dataSource = 'fallback';
+                    updateStatus(`⚠️ API不可用，使用模拟数据 (${rawData.total_events}个事件)`);
+                }
+
+                // 分析 ISS 数据
+                const issAnalysis = analyzeIssData(rawData);
+
+                // 更新统计卡片
+                updateStatCards(rawData, issAnalysis);
+
+                // 更新 ISS 专项指标
+                updateIssMetrics(issAnalysis);
+
+                // 创建图表
+                createIssCharts(issAnalysis);
+
+                // 生成分析和建议
+                generateIssAnalysis(issAnalysis);
+                generateIssRecommendations(issAnalysis);
+
+                // 生成时间线
+                generateAnnotationTimeline(issAnalysis);
+
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'block';
+                
+                const sourceInfo = rawData.data_source === 'real_api' ? 
+                    `📡 实时API数据 (最后更新: ${new Date(rawData.last_updated).toLocaleTimeString()})` :
+                    '💾 模拟数据 (API离线)';
+                updateStatus(`ISS 分析完成 | ${sourceInfo}`);
+
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                showError('数据加载失败，使用模拟数据');
+                
+                const simulatedData = generateSimulatedIssData(currentUser);
+                const issAnalysis = analyzeIssData(simulatedData);
+                updateStatCards(simulatedData, issAnalysis);
+                updateIssMetrics(issAnalysis);
+                createIssCharts(issAnalysis);
+                generateIssAnalysis(issAnalysis);
+                generateIssRecommendations(issAnalysis);
+                generateAnnotationTimeline(issAnalysis);
+                
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'block';
+            }
+        }
+
+        function generateSimulatedIssData(userId) {
+            // 基于真实 API 数据格式生成模拟的 ISS 标注数据
+            if (userId === 'temp_user_001') {
+                return {
+                    total_events: 1123,
+                    event_distribution: {
+                        'EventType.PERFORMANCE': 998,
+                        'EventType.TASK_STATUS': 89,
+                        'EventType.ANNOTATION': 32,
+                        'EventType.USER_INTERACTION': 2,
+                        'EventType.TOOL_EFFICIENCY': 2
+                    },
+                    interactions: {'click': 2},
+                    avg_fps: 55.91,
+                    performance_data: {
+                        avg_fps: 55.91,
+                        avg_operation_time: 150.0,
+                        efficiency_score: 100.0
+                    },
+                    user_profile: USER_PROFILES[userId],
+                    last_updated: new Date().toISOString(),
+                    data_source: 'fallback_simulation',
+                    // ISS 特定数据
+                    iss_simulated_data: {
+                        polygons_completed: 25,
+                        polygons_cancelled: 3,
+                        avg_polygon_duration: 8500, // 8.5秒
+                        polygon_durations: [5200, 7800, 9100, 6700, 12300, 4900, 8800, 7200],
+                        frames_annotated: 8,
+                        avg_frame_duration: 125000, // 2分5秒
+                        idle_periods: [3200, 5100, 2800, 4500, 6200],
+                        total_idle_time: 21800
+                    }
+                };
+            } else {
+                return {
+                    total_events: 230,
+                    event_distribution: {
+                        'EventType.USER_INTERACTION': 100,
+                        'EventType.ANNOTATION': 100,
+                        'EventType.TASK_STATUS': 30
+                    },
+                    interactions: {
+                        'scroll': 31,
+                        'click': 29,
+                        'drag': 22,
+                        'keyboard': 18
+                    },
+                    performance_data: {
+                        avg_operation_time: 997.6,
+                        efficiency_score: 75.3
+                    },
+                    user_profile: USER_PROFILES[userId],
+                    last_updated: new Date().toISOString(),
+                    data_source: 'fallback_simulation',
+                    iss_simulated_data: {
+                        polygons_completed: 15,
+                        polygons_cancelled: 2,
+                        avg_polygon_duration: 12000,
+                        polygon_durations: [8900, 11200, 13500, 9800, 15600, 10100],
+                        frames_annotated: 5,
+                        avg_frame_duration: 180000,
+                        idle_periods: [4200, 3800, 7100, 5500],
+                        total_idle_time: 20600
+                    }
+                };
+            }
+        }
+
+        function analyzeIssData(rawData) {
+            // 从真实数据中提取或使用模拟数据
+            const issData = rawData.iss_simulated_data || {};
+            const annotationEvents = rawData.event_distribution['EventType.ANNOTATION'] || 0;
+            
+            // 计算多边形指标
+            const polygonAnalysis = {
+                total_completed: issData.polygons_completed || Math.floor(annotationEvents * 0.7),
+                total_cancelled: issData.polygons_cancelled || Math.floor(annotationEvents * 0.1),
+                avg_duration: issData.avg_polygon_duration || 10000,
+                min_duration: issData.polygon_durations ? Math.min(...issData.polygon_durations) : 4000,
+                max_duration: issData.polygon_durations ? Math.max(...issData.polygon_durations) : 18000,
+                completion_rate: issData.polygons_completed ? 
+                    (issData.polygons_completed / (issData.polygons_completed + issData.polygons_cancelled) * 100) : 85,
+                polygons_per_minute: issData.avg_polygon_duration ? (60000 / issData.avg_polygon_duration) : 6
+            };
+
+            // 计算帧指标
+            const frameAnalysis = {
+                total_frames: issData.frames_annotated || Math.max(1, Math.floor(annotationEvents / 4)),
+                avg_duration: issData.avg_frame_duration || 150000,
+                polygons_per_frame: polygonAnalysis.total_completed / Math.max(1, issData.frames_annotated || 1),
+                efficiency_ratio: 0.75
+            };
+
+            // 计算空闲时间指标
+            const idleAnalysis = {
+                total_periods: issData.idle_periods ? issData.idle_periods.length : 5,
+                total_time: issData.total_idle_time || 25000,
+                avg_duration: issData.idle_periods ? 
+                    (issData.idle_periods.reduce((a, b) => a + b, 0) / issData.idle_periods.length) : 5000,
+                frequency_per_hour: 2.5,
+                active_time_ratio: 0.82
+            };
+
+            return {
+                polygon: polygonAnalysis,
+                frame: frameAnalysis,
+                idle: idleAnalysis,
+                overall_efficiency: calculateOverallEfficiency(polygonAnalysis, frameAnalysis, idleAnalysis)
+            };
+        }
+
+        function calculateOverallEfficiency(polygon, frame, idle) {
+            const polygonEff = Math.min(100, (6 / (polygon.avg_duration / 60000)) * 100);
+            const frameEff = Math.min(100, frame.polygons_per_frame * 20);
+            const idleEff = Math.min(100, (1 - idle.total_time / 3600000) * 100);
+            
+            return {
+                polygon_score: Math.round(polygonEff),
+                frame_score: Math.round(frameEff),
+                idle_score: Math.round(idleEff),
+                overall_score: Math.round((polygonEff + frameEff + idleEff) / 3)
+            };
+        }
+
+        function updateStatCards(data, issAnalysis) {
+            document.getElementById('totalEvents').textContent = data.total_events || 0;
+            document.getElementById('annotationEvents').textContent = 
+                data.event_distribution['EventType.ANNOTATION'] || 0;
+            
+            // 显示数据来源
+            const sourceText = data.data_source === 'real_api' ? 
+                '✅ 实时InfluxDB数据' : 
+                '💾 模拟数据（API离线）';
+            document.getElementById('eventDetail').textContent = sourceText;
+
+            if (data.avg_fps !== null && data.avg_fps !== undefined) {
+                document.getElementById('avgPerformance').textContent = `${data.avg_fps.toFixed(1)}`;
+                document.getElementById('performanceDetail').textContent = 'FPS平均值';
+            } else {
+                document.getElementById('avgPerformance').textContent = 'N/A';
+                document.getElementById('performanceDetail').textContent = '无性能数据';
+            }
+
+            document.getElementById('efficiencyScore').textContent = 
+                `${issAnalysis.overall_efficiency.overall_score}%`;
+            document.getElementById('efficiencyDetail').textContent = 
+                `ISS 综合效率评分`;
+        }
+
+        function updateIssMetrics(analysis) {
+            // 多边形指标
+            document.getElementById('avgPolygonTime').textContent = 
+                `${(analysis.polygon.avg_duration / 1000).toFixed(1)}s`;
+            document.getElementById('minPolygonTime').textContent = 
+                `${(analysis.polygon.min_duration / 1000).toFixed(1)}s`;
+            document.getElementById('maxPolygonTime').textContent = 
+                `${(analysis.polygon.max_duration / 1000).toFixed(1)}s`;
+            document.getElementById('polygonCompletionRate').textContent = 
+                `${analysis.polygon.completion_rate.toFixed(1)}%`;
+            document.getElementById('polygonsPerMinute').textContent = 
+                `${analysis.polygon.polygons_per_minute.toFixed(1)}`;
+
+            // 帧指标
+            document.getElementById('avgFrameTime').textContent = 
+                `${(analysis.frame.avg_duration / 60000).toFixed(1)}min`;
+            document.getElementById('polygonsPerFrame').textContent = 
+                `${analysis.frame.polygons_per_frame.toFixed(1)}`;
+            document.getElementById('frameEfficiencyRatio').textContent = 
+                `${(analysis.frame.efficiency_ratio * 100).toFixed(1)}%`;
+            document.getElementById('totalFrames').textContent = 
+                `${analysis.frame.total_frames}`;
+            document.getElementById('frameCompleteness').textContent = 
+                `${((analysis.frame.total_frames / Math.max(1, analysis.frame.total_frames + 2)) * 100).toFixed(1)}%`;
+
+            // 空闲时间指标
+            document.getElementById('avgIdleTime').textContent = 
+                `${(analysis.idle.avg_duration / 1000).toFixed(1)}s`;
+            document.getElementById('totalIdleTime').textContent = 
+                `${(analysis.idle.total_time / 60000).toFixed(1)}min`;
+            document.getElementById('idleFrequency').textContent = 
+                `${analysis.idle.frequency_per_hour.toFixed(1)}/h`;
+            document.getElementById('activeTimeRatio').textContent = 
+                `${(analysis.idle.active_time_ratio * 100).toFixed(1)}%`;
+            
+            // 专注度评级
+            let focusLevel = '优秀';
+            if (analysis.idle.active_time_ratio < 0.6) focusLevel = '需改进';
+            else if (analysis.idle.active_time_ratio < 0.75) focusLevel = '一般';
+            else if (analysis.idle.active_time_ratio < 0.9) focusLevel = '良好';
+            
+            document.getElementById('focusLevel').textContent = focusLevel;
+        }
+
+        function createIssCharts(analysis) {
+            createAnnotationTrendChart(analysis);
+            createEfficiencyDistributionChart(analysis);
+        }
+
+        function createAnnotationTrendChart(analysis) {
+            const ctx = document.getElementById('annotationTrendChart').getContext('2d');
+            
+            if (charts.trendChart) {
+                charts.trendChart.destroy();
+            }
+
+            // 生成模拟的时间趋势数据
+            const labels = ['第1天', '第2天', '第3天', '第4天', '第5天', '第6天', '第7天'];
+            const polygonTimes = [
+                analysis.polygon.avg_duration + 2000,
+                analysis.polygon.avg_duration + 500,
+                analysis.polygon.avg_duration - 1000,
+                analysis.polygon.avg_duration - 500,
+                analysis.polygon.avg_duration - 1500,
+                analysis.polygon.avg_duration - 800,
+                analysis.polygon.avg_duration
+            ];
+
+            charts.trendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '多边形标注时间 (秒)',
+                        data: polygonTimes.map(time => time / 1000),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: '时间 (秒)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '标注时间改进趋势'
+                        }
+                    }
+                }
+            });
+        }
+
+        function createEfficiencyDistributionChart(analysis) {
+            const ctx = document.getElementById('efficiencyDistributionChart').getContext('2d');
+            
+            if (charts.distributionChart) {
+                charts.distributionChart.destroy();
+            }
+
+            charts.distributionChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['多边形效率', '帧标注效率', '时间管理', '完成质量', '操作稳定性'],
+                    datasets: [{
+                        label: '当前表现',
+                        data: [
+                            analysis.overall_efficiency.polygon_score,
+                            analysis.overall_efficiency.frame_score,
+                            analysis.overall_efficiency.idle_score,
+                            analysis.polygon.completion_rate,
+                            85 // 稳定性评分
+                        ],
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        borderColor: '#667eea',
+                        pointBackgroundColor: '#667eea'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateAnnotationTimeline(analysis) {
+            const container = document.getElementById('annotationTimeline');
+            
+            // 生成模拟的标注时间线
+            const timelineData = [
+                {
+                    time: '09:15',
+                    action: '开始标注会话',
+                    details: '启动 ISS 工具，准备标注'
+                },
+                {
+                    time: '09:18',
+                    action: '完成第1个多边形',
+                    details: `${(analysis.polygon.min_duration / 1000).toFixed(1)}s，12个点`
+                },
+                {
+                    time: '09:25',
+                    action: '完成第2个多边形',
+                    details: `${(analysis.polygon.avg_duration / 1000).toFixed(1)}s，8个点`
+                },
+                {
+                    time: '09:28',
+                    action: '空闲时间',
+                    details: `${(analysis.idle.avg_duration / 1000).toFixed(1)}s 无操作`
+                },
+                {
+                    time: '09:35',
+                    action: '完成第3个多边形',
+                    details: `${(analysis.polygon.max_duration / 1000).toFixed(1)}s，15个点，复杂形状`
+                },
+                {
+                    time: '09:42',
+                    action: '帧标注完成',
+                    details: `总用时 ${(analysis.frame.avg_duration / 60000).toFixed(1)} 分钟，${analysis.frame.polygons_per_frame.toFixed(0)}个多边形`
+                }
+            ];
+
+            container.innerHTML = '';
+            timelineData.forEach(item => {
+                const timelineItem = document.createElement('div');
+                timelineItem.className = 'timeline-item';
+                timelineItem.innerHTML = `
+                    <strong>${item.time} - ${item.action}</strong><br>
+                    <span style="color: #666;">${item.details}</span>
+                `;
+                container.appendChild(timelineItem);
+            });
+        }
+
+        function generateIssAnalysis(analysis) {
+            const container = document.getElementById('issAnalysis');
+            
+            let analysisHtml = `
+                <div class="analysis-item">
+                    <h4>📊 多边形标注效率分析</h4>
+                    <p>平均标注时间 ${(analysis.polygon.avg_duration / 1000).toFixed(1)} 秒，完成率 ${analysis.polygon.completion_rate.toFixed(1)}%</p>
+                    <p>每分钟可完成 ${analysis.polygon.polygons_per_minute.toFixed(1)} 个多边形，效率评分: ${analysis.overall_efficiency.polygon_score}/100</p>
+                </div>
+                <div class="analysis-item">
+                    <h4>🖼️ 帧级别标注分析</h4>
+                    <p>平均每帧用时 ${(analysis.frame.avg_duration / 60000).toFixed(1)} 分钟，包含 ${analysis.frame.polygons_per_frame.toFixed(1)} 个多边形</p>
+                    <p>帧标注效率比率: ${(analysis.frame.efficiency_ratio * 100).toFixed(1)}%，效率评分: ${analysis.overall_efficiency.frame_score}/100</p>
+                </div>
+                <div class="analysis-item">
+                    <h4>⏸️ 空闲时间管理分析</h4>
+                    <p>平均空闲时长 ${(analysis.idle.avg_duration / 1000).toFixed(1)} 秒，活跃时间占比 ${(analysis.idle.active_time_ratio * 100).toFixed(1)}%</p>
+                    <p>空闲频率: ${analysis.idle.frequency_per_hour.toFixed(1)} 次/小时，时间管理评分: ${analysis.overall_efficiency.idle_score}/100</p>
+                </div>
+            `;
+
+            container.innerHTML = analysisHtml;
+        }
+
+        function generateIssRecommendations(analysis) {
+            const container = document.getElementById('issRecommendations');
+            let recommendationsHtml = '';
+
+            // 基于效率评分生成建议
+            if (analysis.overall_efficiency.polygon_score < 70) {
+                recommendationsHtml += `
+                    <div class="analysis-item">
+                        <h4>🔺 多边形标注优化建议</h4>
+                        <p>• 练习使用快捷键和双击完成功能，减少鼠标操作</p>
+                        <p>• 优化点击精度，减少不必要的修正操作</p>
+                        <p>• 对复杂形状进行分段标注，提高完成率</p>
+                    </div>
+                `;
+            }
+
+            if (analysis.overall_efficiency.frame_score < 70) {
+                recommendationsHtml += `
+                    <div class="analysis-item">
+                        <h4>🖼️ 帧标注效率建议</h4>
+                        <p>• 在开始标注前预先规划多边形的标注顺序</p>
+                        <p>• 使用图像缩放功能提高标注精度</p>
+                        <p>• 考虑批量标注相似对象以提高效率</p>
+                    </div>
+                `;
+            }
+
+            if (analysis.overall_efficiency.idle_score < 70) {
+                recommendationsHtml += `
+                    <div class="analysis-item">
+                        <h4>⏸️ 时间管理优化建议</h4>
+                        <p>• 设置标注任务的时间目标，保持工作节奏</p>
+                        <p>• 减少外部干扰，专注于标注任务</p>
+                        <p>• 在长时间标注后适当休息，保持注意力集中</p>
+                    </div>
+                `;
+            }
+
+            if (analysis.overall_efficiency.overall_score >= 80) {
+                recommendationsHtml += `
+                    <div class="analysis-item">
+                        <h4>🎉 优秀表现保持建议</h4>
+                        <p>• 当前 ISS 标注效率优秀，建议保持现有的工作节奏</p>
+                        <p>• 可以尝试标注更复杂的图像以进一步提升技能</p>
+                        <p>• 考虑分享经验，帮助团队提升整体效率</p>
+                    </div>
+                `;
+            }
+
+            if (!recommendationsHtml) {
+                recommendationsHtml = `
+                    <div class="analysis-item">
+                        <h4>📈 持续改进建议</h4>
+                        <p>• 定期回顾标注质量，确保准确性</p>
+                        <p>• 学习新的标注技巧和工具功能</p>
+                        <p>• 保持与团队的沟通，分享最佳实践</p>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = recommendationsHtml;
+        }
+
+        function showError(message) {
+            const container = document.getElementById('loadingIndicator');
+            container.innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus('页面加载完成');
+            loadUserData();
+        });
+
+        // 定时更新状态
+        setInterval(() => {
+            updateStatus(`展示 ISS 标注分析 - ${USER_PROFILES[currentUser].name}`);
+        }, 5000);
+    </script>
+</body>
+</html> 

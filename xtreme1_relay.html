@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xtreme1 Relay</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+        
+        .loading {
+            display: block;
+        }
+        
+        .error {
+            display: none;
+            color: #e74c3c;
+        }
+        
+        .success {
+            display: none;
+            color: #27ae60;
+        }
+        
+        .export {
+            display: none;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        h1 {
+            margin: 0 0 20px 0;
+            color: #2c3e50;
+            font-size: 24px;
+        }
+        
+        p {
+            margin: 10px 0;
+            line-height: 1.6;
+            font-size: 9px;
+        }
+        
+        .status {
+            font-weight: 500;
+            margin: 15px 0;
+        }
+        
+        .progress-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 20px;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 8px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .export-result {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .file-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            font-size: 12px;
+            color: #2c3e50;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            text-align: left;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-download {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-download:hover {
+            background: linear-gradient(135deg, #3a9bfa 0%, #00d9e8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-close {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-close:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        
+        .status-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .status-label {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .loading-dots::after {
+            content: '.';
+            animation: dots 1.5s infinite steps(1, end);
+        }
+        
+        @keyframes dots {
+            0%, 25% { content: '.'; }
+            50% { content: '..'; }
+            75%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading">
+            <div class="spinner"></div>
+            <h1>Processing Request</h1>
+            <p class="status" id="status">Initializing...</p>
+        </div>
+        
+        <div class="error">
+            <h1>Operation Failed</h1>
+            <p id="error-message">An unknown error occurred</p>
+            <p>Please check your parameters or contact administrator</p>
+            <button class="btn btn-close" onclick="window.close()">Close Window</button>
+        </div>
+        
+        <div class="success">
+            <h1>Redirect Successful</h1>
+            <p>Redirecting to annotation page...</p>
+        </div>
+        
+        <div class="export">
+            <h1>Data Export Process</h1>
+            <p class="status" id="export-status">Starting export...</p>
+            
+            <div class="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            
+            <div class="status-container">
+                <div class="status-item">
+                    <span class="status-label">Current Status</span>
+                    <span class="status-value" id="current-status">Initializing</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Progress</span>
+                    <span class="status-value" id="progress-value">0%</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Processed</span>
+                    <span class="status-value" id="processed-value">0 / 0</span>
+                </div>
+            </div>
+            
+            <div class="export-result" id="export-result">
+                <div class="file-info">
+                    <div class="file-name" id="file-name">export_file.zip</div>
+                    <div class="btn-group">
+                        <button class="btn btn-download" id="download-btn">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                            </svg>
+                            Download
+                        </button>
+                        <button class="btn btn-close" onclick="window.close()">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                            </svg>
+                            Close
+                        </button>
+                    </div>
+                </div>
+                <p>Your export file is ready for download. Click the Download button to save it to your device.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class Xtreme1Relay {
+            constructor() {
+                this.params = this.parseUrlParams();
+                this.exportInterval = null;
+                this.maxAttempts = 30; // Max 30 attempts (approx 2.5 minutes with 5s interval)
+                this.attemptCount = 0;
+                this.init();
+            }
+
+            parseUrlParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const params = {
+                    taskid: urlParams.get('taskid'),
+                    token: urlParams.get('token'),
+                    ltm: urlParams.get('ltm'),
+                    type: urlParams.get('type'),
+                    phase: urlParams.get('phase')
+                };
+                // 新增：token 解析用户名并存储到 localStorage
+                if (params.token) {
+                    try {
+                        // 兼容 Bearer token
+                        var tokenParts = params.token.split(" ");
+                        var actualToken = tokenParts[tokenParts.length - 1];
+                        var tokenInfo = this.decodeJWTPayload(actualToken);
+                        if (tokenInfo && tokenInfo.preferred_username) {
+                            localStorage.setItem('username', tokenInfo.preferred_username);
+                            console.log('Successfully extracted username:', tokenInfo.preferred_username);
+                        }
+                    } catch (error) {
+                        console.error('Failed to decode token:', error);
+                    }
+                    // 移除 url 中的 token 参数
+                    urlParams.delete('token');
+                    const newUrl = window.location.pathname + '?' + urlParams.toString();
+                    if (window.location.search.includes('token=')) {
+                        window.history.replaceState({}, document.title, newUrl);
+                    }
+                }
+                return params;
+            }
+
+            // 新增：decodeJWTPayload
+            decodeJWTPayload(token) {
+                try {
+                    if (!token) {
+                        console.error('Token is empty or undefined');
+                        return null;
+                    }
+                    var parts = token.split('.');
+                    if (parts.length !== 3) {
+                        console.error('Invalid JWT format: expected 3 parts, got', parts.length);
+                        return null;
+                    }
+                    var base64Url = parts[1];
+                    var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                    }).join(''));
+                    return JSON.parse(jsonPayload);
+                } catch (error) {
+                    console.error('Failed to decode JWT payload:', error);
+                    return null;
+                }
+            }
+
+            validateParams() {
+                const required = ['taskid', 'token', 'ltm', 'type', 'phase'];
+                const missing = required.filter(param => !this.params[param]);
+                
+                if (missing.length > 0) {
+                    throw new Error(`Missing required parameters: ${missing.join(', ')}`);
+                }
+
+                // if (!['annotate', 'upload', 'export'].includes(this.params.type)) {
+                //     throw new Error('Type parameter must be annotate, upload or export');
+                // }
+            }
+
+            async init() {
+                try {
+                    this.updateStatus('Validating parameters...');
+                    this.validateParams();
+                    
+                    if (this.params.type === 'export') {
+                        // Show export UI
+                        document.querySelector('.loading').style.display = 'none';
+                        document.querySelector('.export').style.display = 'block';
+                        await this.exportProcess();
+                    } else {
+                        // Original annotation redirect flow
+                        this.updateStatus('Getting authentication token...');
+                        const xtreme1Token = await this.getXtreme1Token();
+                        
+                        this.updateStatus('Setting authentication...');
+                        this.setCookie(xtreme1Token);
+                        
+                        this.updateStatus('Getting annotation record...');
+                        const recordIdType = await this.getRecordIdType();
+                        
+                        this.updateStatus('Preparing redirect...');
+                        this.redirect(recordIdType);
+                    }
+                    
+                } catch (error) {
+                    console.error('Xtreme1Relay error:', error);
+                    this.showError(error.message);
+                }
+            }
+
+            updateStatus(message) {
+                const statusElement = document.getElementById('status');
+                if (statusElement) {
+                    statusElement.textContent = message;
+                }
+            }
+
+            updateExportStatus(message) {
+                const statusElement = document.getElementById('export-status');
+                if (statusElement) {
+                    // statusElement.textContent = message;
+                    statusElement.innerHTML = message;
+                }
+            }
+
+            updateProgress(status, processed, total) {
+                document.getElementById('current-status').textContent = status;
+                
+                const progressValue = document.getElementById('progress-value');
+                const progressBar = document.getElementById('progress-bar');
+                const processedValue = document.getElementById('processed-value');
+                
+                if (total > 0) {
+                    const percent = Math.round((processed / total) * 100);
+                    progressValue.textContent = `${percent}%`;
+                    progressBar.style.width = `${percent}%`;
+                    processedValue.textContent = `${processed} / ${total}`;
+                } else {
+                    progressValue.textContent = '0%';
+                    progressBar.style.width = '0%';
+                    processedValue.textContent = '0 / 0';
+                }
+            }
+
+            async getXtreme1Token() {
+                const url = `${this.params.ltm}/api/v1/xtreme1_relay/token`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${this.params.token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to get token: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                if (!data.xtreme1_token) {
+                    throw new Error('Missing xtreme1_token field in response');
+                }
+
+                return data.xtreme1_token;
+            }
+
+            setCookie(token) {
+                const domain = document.domain;
+                const cookieValue = `${domain} token=${token};domain=${domain};expires=Fri, 31 Dec 9999 23:59:59 GMT`;
+                document.cookie = cookieValue;
+                // 新增：将 xtreme1_token 也存到 localStorage，key 为 'token'
+                localStorage.setItem('token', token);
+            }
+
+            async getRecordIdType() {
+                const url = `${this.params.ltm}/api/v1/xtreme1_relay/annotate`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.params.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        task_id: this.params.taskid,
+                        phase: this.params.phase
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to get record ID: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                if (!data.recordId) {
+                    throw new Error('Missing recordId field in response');
+                }
+                if (!data.toolType) {
+                    throw new Error('Missing toolType field in response');
+                }
+                return data;
+            }
+
+            redirect(recordIdType) {
+                const baseUrl = window.location.origin;
+                // const toolType = this.params.type === 'image' ? 'image' : 'pc';
+                const toolType = recordIdType.toolType;
+                // 不再传递 token 字段
+                const queryParams = new URLSearchParams({
+                    recordId: recordIdType.recordId,
+                    taskid: this.params.taskid,
+                    // token: this.params.token, // 移除 token
+                    ltm: this.params.ltm,
+                    phase: this.params.phase
+                });
+                const redirectUrl = `${baseUrl}/tool/${toolType}?${queryParams.toString()}`;
+                console.log('redirectUrl', redirectUrl);
+                
+                this.showSuccess();
+                
+                // Delay redirect to show success message
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 1000);
+            }
+
+            async exportProcess() {
+                try {
+                    // Step 1: Get dataset ID
+                    this.updateExportStatus('Fetching dataset information...');
+                    const datasetId = await this.getDatasetId();
+                    
+                    // Step 2: Get Xtreme1 token
+                    this.updateExportStatus('Authenticating with Xtreme1...');
+                    const xtreme1Token = await this.getXtreme1Token();
+                    
+                    // Step 3: Initiate export
+                    this.updateExportStatus('Starting export process...');
+                    const serialNumber = await this.initiateExport(datasetId, xtreme1Token);
+                    
+                    // Step 4: Monitor export progress
+                    this.updateExportStatus('Processing export data...');
+                    this.monitorExport(datasetId, xtreme1Token, serialNumber);
+                    
+                } catch (error) {
+                    console.error('Export process error:', error);
+                    this.showError(error.message);
+                }
+            }
+
+            async getDatasetId() {
+                const url = `${this.params.ltm}/api/v1/jsonapi/models/phasemetafiles?filter[belong]=${this.params.taskid}&filter[category]=Task&sort=-created&page[limit]=1`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${this.params.token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to get dataset ID: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                if (!data.data || data.data.length === 0) {
+                    throw new Error('No dataset found for the task');
+                }
+
+                const datasetId = data.data[0].attributes.phasemetadata.datasetId;
+                if (!datasetId) {
+                    throw new Error('Dataset ID not found in response');
+                }
+
+                return datasetId;
+            }
+
+            async initiateExport(datasetId, xtreme1Token) {
+                const baseUrl = window.location.origin;
+                const url = `${baseUrl}/api/data/export?datasetId=${datasetId}&selectModelRunIds=-1&dataFormat=XTREME1`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${xtreme1Token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to initiate export: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                if (data.code !== "OK") {
+                    throw new Error(`Export failed: ${data.code} - ${data.message}`);
+                }
+
+                if (!data.data) {
+                    throw new Error('Serial number not found in response');
+                }
+
+                return data.data;
+            }
+
+            async monitorExport(datasetId, xtreme1Token, serialNumber) {
+                this.exportInterval = setInterval(async () => {
+                    try {
+                        this.attemptCount++;
+                        if (this.attemptCount > this.maxAttempts) {
+                            clearInterval(this.exportInterval);
+                            throw new Error('Export timed out. Please try again later.');
+                        }
+
+                        const baseUrl = window.location.origin;
+                        const url = `${baseUrl}/api/data/findExportRecordBySerialNumbers?serialNumbers=${serialNumber}`;
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${xtreme1Token}`
+                            }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`Failed to check export status: ${response.status} ${response.statusText}`);
+                        }
+
+                        const data = await response.json();
+                        if (data.code !== "OK") {
+                            throw new Error(`Export status check failed: ${data.code} - ${data.message}`);
+                        }
+
+                        const exportData = data.data.find(item => item.serialNumber === serialNumber);
+                        if (!exportData) {
+                            throw new Error('Export data not found');
+                        }
+
+                        // Update progress UI
+                        this.updateProgress(
+                            exportData.status, 
+                            exportData.generatedNum || 0, 
+                            exportData.totalNum || 0
+                        );
+
+                        if (exportData.status === "COMPLETED") {
+                            clearInterval(this.exportInterval);
+                            this.showExportResult(exportData.fileName, exportData.filePath, exportData.generatedNum, exportData.totalNum);
+                        } else if (exportData.status === "FAILED") {
+                            clearInterval(this.exportInterval);
+                            throw new Error('Export process failed. Please try again later.');
+                        }
+
+                    } catch (error) {
+                        clearInterval(this.exportInterval);
+                        this.showError(error.message);
+                    }
+                }, 5000); // Check every 5 seconds
+            }
+
+            showExportResult(fileName, filePath, generatedNum, totalNum) {
+                this.updateExportStatus('Export completed successfully!');
+                this.updateProgress("COMPLETED", generatedNum, totalNum);
+                
+                const exportResult = document.getElementById('export-result');
+                const fileNameElement = document.getElementById('file-name');
+                const downloadBtn = document.getElementById('download-btn');
+                
+                fileNameElement.textContent = fileName;
+                
+                // Set up download button
+                downloadBtn.onclick = () => {
+                    const link = document.createElement('a');
+                    link.href = filePath;
+                    link.download = fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // Close window after a short delay
+                    setTimeout(() => {
+                        window.close();
+                    }, 1000);
+                };
+                
+                exportResult.style.display = 'block';
+            }
+
+            showError(message) {
+                document.querySelector('.loading').style.display = 'none';
+                document.querySelector('.export').style.display = 'none';
+                document.querySelector('.success').style.display = 'none';
+                
+                document.querySelector('.error').style.display = 'block';
+                document.getElementById('error-message').textContent = message;
+            }
+
+            showSuccess() {
+                document.querySelector('.loading').style.display = 'none';
+                document.querySelector('.error').style.display = 'none';
+                document.querySelector('.export').style.display = 'none';
+                document.querySelector('.success').style.display = 'block';
+            }
+        }
+
+        // 添加动态点动画效果
+        function animateLoadingDots() {
+            const dotsElements = document.querySelectorAll('.loading-dots');
+            dotsElements.forEach(element => {
+                let dots = 0;
+                setInterval(() => {
+                    dots = (dots + 1) % 4;
+                    element.textContent = '.'.repeat(dots);
+                }, 500);
+            });
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new Xtreme1Relay();
+            animateLoadingDots();
+        });
+    </script>
+</body>
+</html>

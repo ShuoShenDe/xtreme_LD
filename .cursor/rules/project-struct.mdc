@@ -1,0 +1,17 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+这个项目是基于一个开源项目 https://github.com/xtreme1-io/xtreme1 进行二次修改的项目. 其中项目中大部分的内容, 不需要进行调整. 只需要调整前端的页面即可. 且页面的逻辑目前基本不需要改变, 只需要调整结构和样式. 目前主要需要调整的前端项目如下:
+
+- `frontend/main`: 包含了登录, 数据管理模块.
+- `frontend/pc-tool`: 包含了点云可视化和标注模块.
+- `frontend/image-tool`: 包含了图像可视化和标注模块.
+- `frontend/text-tool`: 包含了文本处理工具.
+
+对前端项目进行修改时, 总是先修改 `frontend/image-tool`. 而不同的前端项目需要修改的内容大体一致, 因此在要求对 `frontend/pc-tool` 进行修改的时候, 可以参考 `frontend/image-tool` 中对应的文件和代码. 所有的前端项目无论是 `image-tool` 还是 `pc-tool` 在开发时都遵循如下原则:
+
+- 在开发过程中的修改尽量放到自己单独的文件夹中. 比如 api 请求相关的代码放到了 `src/ltmApi/` 中, 新增的组件放到了 `src/ltmComponents/` 中, 新增的 i18n 翻译放到了 `src/ltmLocales/` 中. 由于 pinia 是新引入的, 因此直接放到了 `src/stores` 中.
+- 本项目的后端是以 jsonapi 的形式返回的数据.
+- 本项目中使用的组件库和图标库为 `ant-design-vue` 和 `@ant-design/icons-vue`.

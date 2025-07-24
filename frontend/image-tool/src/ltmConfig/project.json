@@ -1,0 +1,487 @@
+{
+    "current": true,
+    "labelSettings": {
+      "rect": {
+        "commonProps": [
+          {
+            "label": "track name",
+            "propName": "userData.trackName",
+            "propType": "String",
+            "propTypeSettings": {}
+          },
+          {
+            "label": "class type",
+            "propName": "userData.classType",
+            "propType": "String",
+            "propTypeSettings": {}
+          }
+        ],
+        "objectProps": [
+          {
+            "label": "坐标x:",
+            "propName": "attrs.x",
+            "propType": "Number",
+            "propTypeSettings": {
+              "precision": 4,
+              "step": 2,
+              "min": 0
+            }
+          },
+          {
+            "label": "坐标y:",
+            "propName": "attrs.y",
+            "propType": "Number",
+            "propTypeSettings": {
+              "precision": 4,
+              "step": 2,
+              "min": 0
+            }
+          },
+          {
+            "label": "width",
+            "propName": "attrs.width",
+            "propType": "Number",
+            "propTypeSettings": {
+              "precision": 4,
+              "step": 1,
+              "min": 0
+            }
+          },
+          {
+            "label": "height",
+            "propName": "attrs.height",
+            "propType": "Number",
+            "propTypeSettings": {
+              "precision": 4,
+              "step": 1,
+              "min": 0
+            }
+          }
+        ]
+      }
+    },
+    "qcSettings": {
+      "frameInfo": {},
+      "annotationComponents": {
+        "area": {
+          "objectInfo": [],
+          "objectComponents": [
+            {
+              "type": "rejectReason",
+              "valueName": "rejectReasons",
+              "options": [
+                {
+                  "label": "漏标",
+                  "value": "value3",
+                  "forObject": false,
+                  "forNonObject": true,
+                  "description": "漏标"
+                }
+              ]
+            },
+            {
+              "type": "frameRange",
+              "valueName": "frameRange"
+            },
+            {
+              "type": "comment",
+              "valueName": "comment"
+            }
+          ]
+        },
+        "box3d": {
+          "objectInfo": [
+            {
+              "label": "id",
+              "propName": "id",
+              "propType": "Number",
+              "propTypeSettings": {},
+              "canCheck": false,
+              "valueName": "valueName1"
+            },
+            {
+              "label": "分类",
+              "propName": "type",
+              "propType": "String",
+              "propTypeSettings": {},
+              "canCheck": true,
+              "valueName": "wrongType"
+            },
+            {
+              "label": "分类标签真值",
+              "propName": "class_label_true",
+              "propType": "String",
+              "propTypeSettings": {},
+              "canCheck": true,
+              "valueName": "wrongClassLabelTrue"
+            },
+            {
+              "label": "子分类标签真值",
+              "propName": "subclass_label_true",
+              "propType": "String",
+              "propTypeSettings": {},
+              "canCheck": true,
+              "valueName": "wrongSubclassLabelTrue"
+            }
+          ],
+          "objectComponents": [
+            {
+              "type": "rejectReason",
+              "valueName": "rejectReasons",
+              "options": [
+                {
+                  "label": "多标",
+                  "value": "value2",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "多标"
+                },
+                {
+                  "label": "漏标",
+                  "value": "value3",
+                  "forObject": false,
+                  "forNonObject": true,
+                  "description": "漏标"
+                },
+                {
+                  "label": "不贴合",
+                  "value": "value4",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "不贴合"
+                },
+                {
+                  "label": "方向错误",
+                  "value": "value5",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "方向错误"
+                },
+                {
+                  "label": "ID变化",
+                  "value": "value6",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "ID变化"
+                },
+                {
+                  "label": "主分类错误",
+                  "value": "value7",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "主分类错误"
+                },
+                {
+                  "label": "子分类错误",
+                  "value": "value8",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "子分类错误"
+                },
+                {
+                  "label": "框旋转",
+                  "value": "value9",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "框旋转"
+                },
+                {
+                  "label": "移动状态错误",
+                  "value": "value10",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "移动状态错误"
+                },
+                {
+                  "label": "车门选项错误",
+                  "value": "value11",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "车门选项错误"
+                },
+                {
+                  "label": "CIPV错误",
+                  "value": "value12",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "CIPV错误"
+                },
+                {
+                  "label": "遮挡错误",
+                  "value": "value13",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "遮挡错误"
+                },
+                {
+                  "label": "截断错误",
+                  "value": "value14",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "截断错误"
+                },
+                {
+                  "label": "模糊错误",
+                  "value": "value15",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "模糊错误"
+                },
+                {
+                  "label": "车灯错误",
+                  "value": "value16",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "车灯错误"
+                },
+                {
+                  "label": "偏移属性错误",
+                  "value": "value17",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "偏移属性错误"
+                },
+                {
+                  "label": "三轮车选项错误",
+                  "value": "value18",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "三轮车选项错误"
+                }
+              ]
+            },
+            {
+              "type": "frameRange",
+              "valueName": "frameRange"
+            },
+            {
+              "type": "comment",
+              "valueName": "comment"
+            }
+          ]
+        },
+        "rect": {
+          "objectInfo": [
+            {
+              "label": "trackName",
+              "propName": "userData.trackName",
+              "propType": "Number",
+              "propTypeSettings": {},
+              "canCheck": false,
+              "valueName": "valueName1"
+            },
+            {
+              "label": "分类",
+              "propName": "userData.classType",
+              "propType": "String",
+              "propTypeSettings": {},
+              "canCheck": true,
+              "valueName": "wrongType"
+            }
+          ],
+          "objectComponents": [
+            {
+              "type": "rejectReason",
+              "valueName": "rejectReasons",
+              "options": [
+                {
+                  "label": "多标",
+                  "value": "value2",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "多标"
+                },
+                {
+                  "label": "漏标",
+                  "value": "value3",
+                  "forObject": false,
+                  "forNonObject": true,
+                  "description": "漏标"
+                },
+                {
+                  "label": "不贴合",
+                  "value": "value4",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "不贴合"
+                },
+                {
+                  "label": "方向错误",
+                  "value": "value5",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "方向错误"
+                },
+                {
+                  "label": "ID变化",
+                  "value": "value6",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "ID变化"
+                },
+                {
+                  "label": "主分类错误",
+                  "value": "value7",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "主分类错误"
+                },
+                {
+                  "label": "子分类错误",
+                  "value": "value8",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "子分类错误"
+                },
+                {
+                  "label": "框旋转",
+                  "value": "value9",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "框旋转"
+                },
+                {
+                  "label": "移动状态错误",
+                  "value": "value10",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "移动状态错误"
+                },
+                {
+                  "label": "车门选项错误",
+                  "value": "value11",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "车门选项错误"
+                },
+                {
+                  "label": "CIPV错误",
+                  "value": "value12",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "CIPV错误"
+                },
+                {
+                  "label": "遮挡错误",
+                  "value": "value13",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "遮挡错误"
+                },
+                {
+                  "label": "截断错误",
+                  "value": "value14",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "截断错误"
+                },
+                {
+                  "label": "模糊错误",
+                  "value": "value15",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "模糊错误"
+                },
+                {
+                  "label": "车灯错误",
+                  "value": "value16",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "车灯错误"
+                },
+                {
+                  "label": "偏移属性错误",
+                  "value": "value17",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "偏移属性错误"
+                },
+                {
+                  "label": "三轮车选项错误",
+                  "value": "value18",
+                  "forObject": true,
+                  "forNonObject": false,
+                  "description": "三轮车选项错误"
+                }
+              ]
+            },
+            {
+              "type": "frameRange",
+              "valueName": "frameRange"
+            },
+            {
+              "type": "comment",
+              "valueName": "comment"
+            }
+          ]
+        }
+      },
+      "sensorComponents": [
+        {
+          "type": "rejectReason",
+          "valueName": "rejectReasons",
+          "options": [
+            {
+              "label": "传感器数据质量低",
+              "value": "value1",
+              "forObject": true,
+              "forNonObject": false,
+              "description": "传感器数据质量低"
+            }
+          ]
+        },
+        {
+          "type": "frameRange",
+          "valueName": "frameRange"
+        },
+        {
+          "type": "comment",
+          "valueName": "comment"
+        }
+      ],
+      "frameComponents": [
+        {
+          "type": "rejectReason",
+          "valueName": "rejectReasons",
+          "options": [
+            {
+              "label": "本帧错误太多",
+              "value": "value1",
+              "forObject": true,
+              "forNonObject": false,
+              "description": "本帧错误太多"
+            }
+          ]
+        },
+        {
+          "type": "frameRange",
+          "valueName": "frameRange"
+        },
+        {
+          "type": "comment",
+          "valueName": "comment"
+        }
+      ],
+      "taskComponents": [
+        {
+          "type": "rejectReason",
+          "valueName": "rejectReasons",
+          "options": [
+            {
+              "label": "整个任务错误太多",
+              "value": "value1",
+              "forObject": true,
+              "forNonObject": false,
+              "description": "整个任务错误太多"
+            }
+          ]
+        },
+        {
+          "type": "comment",
+          "valueName": "comment"
+        }
+      ]
+    },
+    "toolSettings": {},
+    "mode": "Liangdao"
+  }

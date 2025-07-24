@@ -1,0 +1,22 @@
+{
+  "name": "xtreme1-e2e-tests",
+  "version": "1.0.0",
+  "description": "E2E tests for Xtreme1 frontend tools",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:headed": "playwright test --headed",
+    "test:pc-tool": "playwright test --project=pc-tool",
+    "test:image-tool": "playwright test --project=image-tool",
+    "test:visual": "playwright test visual/",
+    "test:performance": "playwright test performance/",
+    "install:browsers": "playwright install",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

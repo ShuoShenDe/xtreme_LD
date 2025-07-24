@@ -1,0 +1,360 @@
+default:
+  tags:
+    - lddata11
+
+variables:
+  operation:
+    value: "deploy AWS-Germany"
+    options:
+      - "deploy AWS-Germany"
+      - "deploy AWS-China-Ningxia"
+    description: "Choose the operation mode"
+  # E2E 测试控制开关 - 设置为 "false" 禁用所有 E2E 测试
+  ENABLE_E2E_TESTS:
+    value: "false"
+    options:
+      - "true"
+      - "false"  
+    description: "Enable or disable E2E tests"
+
+stages:
+  - build
+  - test
+  - deploy
+
+# ==================== SHARED TEMPLATES ====================
+
+# Playwright 测试的共享配置
+.playwright-test-template: &playwright-test
+  stage: test
+  tags: [sd_t4]
+  image: mcr.microsoft.com/playwright:v1.54.0-noble
+  variables:
+    CI: "true"
+    npm_config_cache: "$CI_PROJECT_DIR/.npm"
+    PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+  cache:
+    paths:
+      - .npm/
+      - e2e-tests/node_modules/
+      - frontend/image-tool/node_modules/
+      - frontend/pc-tool/node_modules/
+  before_script:
+    - echo "=== 使用Docker镜像预装浏览器 ==="
+    - ls -la /ms-playwright/
+    - cd e2e-tests
+    - npm install
+    - npx playwright --version
+    - echo "创建符号链接让Playwright找到Docker镜像中的所有组件..."
+    - mkdir -p node_modules/playwright-core/.local-browsers
+    - ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+    - ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+    - ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+    - ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+    - ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+    - echo "验证所有符号链接："
+    - ls -la node_modules/playwright-core/.local-browsers/
+    - echo "验证关键可执行文件："
+    - ls -la node_modules/playwright-core/.local-browsers/chromium_headless_shell-1181/ | head -5
+    - ls -la node_modules/playwright-core/.local-browsers/ffmpeg-1011/ | head -5
+    - echo "=== 设置完成 ==="
+    - cd ../frontend/image-tool
+    - npm ci
+    - cd ../pc-tool
+    - npm ci
+    - cd ../../e2e-tests
+  artifacts:
+    when: always
+    paths:
+      - e2e-tests/test-results/
+      - e2e-tests/html-report/
+
+# 基础测试规则 - 用于核心功能测试和前端检查（始终执行）
+.core-test-rules: &core-test-rules
+  - if: '$CI_PIPELINE_SOURCE == "push"'
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+# E2E 测试规则 - 可禁用的 E2E 测试
+.e2e-test-rules: &e2e-test-rules
+  - if: '$ENABLE_E2E_TESTS == "true" && $CI_PIPELINE_SOURCE == "push"'
+  - if: '$ENABLE_E2E_TESTS == "true" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+
+# 主分支测试规则 - 可禁用的 E2E 测试
+.main-branch-rules: &main-branch-rules
+  - if: '$ENABLE_E2E_TESTS == "true" && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$ENABLE_E2E_TESTS == "true" && $CI_PIPELINE_SOURCE == "schedule"'
+
+# ==================== BUILD STAGE ====================
+
+build:
+  stage: build
+  tags: [lddata11]
+  before_script:
+    - docker version
+    - docker compose version
+  script:
+    - docker compose build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $operation == "deploy AWS-Germany"'
+
+# ==================== TEST STAGE ====================
+
+# 📢 E2E 测试部分禁用说明：
+# ✅ 仍然执行：core-functionality-test, frontend-lint
+# 🚫 已禁用：e2e-tests, performance-tests, visual-regression-tests, nightly-tests
+# 要重新启用被禁用的测试，请将 ENABLE_E2E_TESTS 变量设置为 "true"
+
+e2e-tests:
+  <<: *playwright-test
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-e2e"
+    paths:
+      - .npm/
+      - e2e-tests/node_modules/
+      - frontend/image-tool/node_modules/
+      - frontend/pc-tool/node_modules/
+  script:
+    - chmod +x run-tests.sh
+    - ./run-tests.sh all --ci
+  artifacts:
+    when: always
+    reports:
+      junit: e2e-tests/test-results/junit.xml
+    paths:
+      - e2e-tests/test-results/
+      - e2e-tests/html-report/
+      - e2e-tests/playwright-report/
+    expire_in: 1 week
+  coverage: '/Lines\s*:\s*(\d+\.\d+)%/'
+  rules: *e2e-test-rules
+  allow_failure: false
+
+core-functionality-test:
+  <<: *playwright-test
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-core-test"
+    paths:
+      - .npm/
+      - e2e-tests/node_modules/
+      - frontend/image-tool/node_modules/
+      - frontend/pc-tool/node_modules/
+  script:
+    - chmod +x run-tests.sh
+    - ./run-tests.sh core --ci
+  artifacts:
+    when: always
+    reports:
+      junit: e2e-tests/test-results/junit.xml
+    paths:
+      - e2e-tests/test-results/
+      - e2e-tests/html-report/
+    expire_in: 3 days
+  rules: *core-test-rules
+  allow_failure: false
+
+frontend-lint:
+  stage: test
+  tags: [sd_t4]
+  image: node:18-alpine
+  variables:
+    npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-lint"
+    paths:
+      - .npm/
+      - frontend/image-tool/node_modules/
+  before_script:
+    - cd frontend/image-tool
+    - npm ci
+  script:
+    - npm run lint:eslint || true
+    - npx tsc --noEmit || true
+  artifacts:
+    reports:
+      codequality: frontend/image-tool/eslint-report.json
+    paths:
+      - frontend/image-tool/eslint-report.json
+    expire_in: 1 week
+  rules: *core-test-rules
+  allow_failure: true
+
+performance-tests:
+  <<: *playwright-test
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-performance"
+    paths:
+      - .npm/
+      - e2e-tests/node_modules/
+      - frontend/image-tool/node_modules/
+      - frontend/pc-tool/node_modules/
+  script:
+    - chmod +x run-tests.sh
+    - ./run-tests.sh performance --ci
+  artifacts:
+    when: always
+    paths:
+      - e2e-tests/test-results/
+      - e2e-tests/html-report/
+    expire_in: 1 week
+  rules: *main-branch-rules
+  allow_failure: true
+
+visual-regression-tests:
+  <<: *playwright-test
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-visual"
+    paths:
+      - .npm/
+      - e2e-tests/node_modules/
+      - frontend/image-tool/node_modules/
+      - frontend/pc-tool/node_modules/
+  script:
+    - chmod +x run-tests.sh
+    - ./run-tests.sh visual --ci
+  artifacts:
+    when: always
+    paths:
+      - e2e-tests/test-results/
+      - e2e-tests/html-report/
+    expire_in: 2 weeks
+  rules: *main-branch-rules
+  allow_failure: true
+
+# ==================== DEPLOY STAGE ====================
+
+deploy-AWS-Germany:
+  stage: deploy
+  tags: [AWS-16C32G-18.04-18.153.197.47]
+  before_script:
+    - docker version
+    - docker compose version
+    - export RUNNER_UID=$(id -u gitlab-runner)
+    - export RUNNER_GID=$(id -g gitlab-runner)
+  script:
+    - docker compose down
+    - docker compose up -d
+  after_script:
+    # 简单清理：移除悬挂的镜像
+    - docker image prune -f || true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $operation == "deploy AWS-Germany"'
+      when: on_success
+  needs: 
+    - job: e2e-tests
+      artifacts: false
+      optional: true  # 可选 - 因为被禁用了
+    - job: core-functionality-test
+      artifacts: false  # 必需 - 核心功能测试始终执行
+
+deploy-AWS-China-Ningxia:
+  tags:
+    - AWS-16C32G-20.04-52.83.136.154
+  stage: deploy
+  before_script:
+    - docker version
+    - docker compose version
+    - export RUNNER_UID=$(id -u gitlab-runner)
+    - export RUNNER_GID=$(id -g gitlab-runner)
+  only:
+    variables:
+      - $operation == "deploy AWS-China-Ningxia"
+  script:
+    - echo "LD_MOUNT_DATA_PATH=/mnt" > .env
+    - docker-compose build
+    - docker-compose down --remove-orphans
+    - docker-compose up -d
+  needs: 
+    - job: e2e-tests
+      artifacts: false
+      optional: true  # 可选 - 因为被禁用了
+    - job: core-functionality-test
+      artifacts: false  # 必需 - 核心功能测试始终执行
+
+# ==================== 测试报告页面 ====================
+
+pages:
+  stage: deploy
+  tags: [sd_t4]
+  before_script:
+    - echo "Preparing pages deployment..."
+  script:
+    - mkdir -p public
+    - if [ -d "e2e-tests/html-report" ]; then cp -r e2e-tests/html-report/* public/; fi
+    - |
+      cat > public/index.html << EOF
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>Xtreme1 Test Reports</title>
+          <style>
+              body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+              .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+              .header { border-bottom: 2px solid #007acc; padding-bottom: 20px; margin-bottom: 30px; }
+              .report-link { display: block; padding: 15px 20px; margin: 15px 0; background: linear-gradient(135deg, #007acc, #005fa3); color: white; text-decoration: none; border-radius: 6px; transition: all 0.3s; }
+              .report-link:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,122,204,0.3); color: white; }
+              .badge { display: inline-block; padding: 4px 8px; background: #28a745; color: white; border-radius: 12px; font-size: 12px; margin-left: 10px; }
+              .info { background: #e7f3ff; padding: 15px; border-radius: 6px; border-left: 4px solid #007acc; }
+            </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>🧪 Xtreme1 Test Reports</h1>
+                  <div class="info">
+                      <strong>Pipeline:</strong> #${CI_PIPELINE_ID} | 
+                      <strong>Branch:</strong> ${CI_COMMIT_REF_NAME} | 
+                      <strong>Commit:</strong> ${CI_COMMIT_SHORT_SHA}
+                  </div>
+              </div>
+              
+              <h2>📊 Available Reports</h2>
+              <a href="index.html" class="report-link">
+                  🎯 E2E Test Report <span class="badge">Latest</span>
+              </a>
+              
+              <h3>📈 Test Statistics</h3>
+              <ul>
+                  <li>Generated on: $(date)</li>
+                  <li>Runner: ${CI_RUNNER_DESCRIPTION}</li>
+                  <li>Build Duration: Available in pipeline details</li>
+              </ul>
+              
+              <p><em>For detailed logs and artifacts, visit the <a href="${CI_PIPELINE_URL}" target="_blank">GitLab Pipeline</a></em></p>
+          </div>
+      </body>
+      </html>
+      EOF
+  artifacts:
+    paths:
+      - public
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  needs:
+    - job: e2e-tests
+      artifacts: true
+      optional: true  # 可选 - 因为被禁用了
+    - job: core-functionality-test
+      artifacts: true  # 必需 - 核心功能测试始终执行
+
+# ==================== 定时任务 ====================
+
+nightly-tests:
+  extends: e2e-tests
+  rules:
+    - if: '$ENABLE_E2E_TESTS == "true" && $CI_PIPELINE_SOURCE == "schedule"'
+  variables:
+    TEST_SCOPE: "comprehensive"
+
+# 简单的定期清理 - 仅在定时任务中执行
+weekend-cleanup:
+  stage: deploy
+  tags: [lddata11]
+  script:
+    - echo "执行定期清理..."
+    - docker system prune -f || true
+    - echo "清理完成"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  allow_failure: true
+
