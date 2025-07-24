@@ -29,7 +29,7 @@ env:
 jobs:
   build:
     name: Build
-    runs-on: [self-hosted, lddata11]
+    runs-on: [self-hosted, docker-linux]
     if: ${{ github.event.inputs.operation == 'deploy AWS-Germany' }}
     steps:
       - name: Checkout
@@ -42,7 +42,7 @@ jobs:
 
   core-tests:
     name: Core Tests
-    runs-on: [self-hosted, lddata11]
+    runs-on: [self-hosted, docker-linux]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,8 +53,7 @@ jobs:
 
   e2e-tests:
     name: E2E Tests
-    runs-on: [self-hosted, lddata11]
-    if: ${{ env.ENABLE_E2E_TESTS == 'true' }}
+    runs-on: [self-hosted, docker-linux]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
