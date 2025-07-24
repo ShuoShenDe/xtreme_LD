@@ -37,16 +37,6 @@ jobs:
           docker compose version
           docker compose build
 
-  core-tests:
-    name: Core Tests
-    runs-on: [self-hosted, docker-linux]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install & Run
-        run: |
-          chmod +x run-tests.sh
-          ./run-tests.sh core --ci
 
   e2e-tests:
     name: E2E Tests
@@ -56,8 +46,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Prepare
         run: |
-          chmod +x run-tests.sh
-          ./run-tests.sh all --ci
+          chmod +x e2e-tests/run-tests.sh
+          e2e-tests/run-tests.sh all --ci
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -69,7 +59,7 @@ jobs:
 
   deploy-germany:
     name: Deploy to AWS Germany
-    needs: [build, core-tests, e2e-tests]
+    needs: [build, e2e-tests]
     runs-on: [self-hosted, lddata11]
     if: ${{ github.event.inputs.operation == 'deploy AWS-Germany' && github.ref == 'refs/heads/main' }}
     steps:
@@ -81,7 +71,7 @@ jobs:
 
   deploy-ningxia:
     name: Deploy to AWS China Ningxia
-    needs: [build, core-tests, e2e-tests]
+    needs: [build, e2e-tests]
     runs-on: [self-hosted, lddata11]
     if: ${{ github.event.inputs.operation == 'deploy AWS-China-Ningxia' && github.ref == 'refs/heads/main' }}
     steps:
