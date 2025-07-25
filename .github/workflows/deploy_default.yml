@@ -360,7 +360,6 @@ jobs:
   # Deploy to AWS Germany
   deploy-aws-germany:
     runs-on: [self-hosted, docker-linux]
-    needs: [core-functionality-test]
     if: github.ref == 'refs/heads/main' && (github.event.inputs.operation == 'deploy AWS-Germany' || github.event.inputs.operation == null)
     steps:
       - name: Checkout code

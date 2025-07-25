@@ -8,7 +8,7 @@ test.describe('2D Polygon Annotation Tests', () => {
     imageToolPage = new ImageToolPage(page);
     
     // 导航到测试页面
-    await page.goto('http://localhost:3300/?recordId=test-record-123&datasetId=test-dataset-456&dataId=test-data-789&taskid=test-task-123&ltm=http://localhost:8080&phase=annotate');
+    await page.goto('http://localhost:3300/?recordId=test-record-123&datasetId=test-dataset-456');
     
     // 等待页面加载完成
     await page.waitForLoadState('networkidle');

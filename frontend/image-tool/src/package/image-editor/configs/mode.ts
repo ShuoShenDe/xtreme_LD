@@ -33,7 +33,27 @@ const empty: IModeConfig<IUIType, IActionName> = {
   actions: {} as any,
 };
 
-export const modes = { empty };
+const edit: IModeConfig<IUIType, IActionName> = {
+  name: 'edit',
+  op: OPType.EDIT,
+  ui: toMap([
+    'edit',
+    'tool_rect',
+    'tool_polygon',
+    'tool_line', 
+    'tool_keyPoint',
+    'tool_iss',
+    'tool_issRect',
+    'tool_issPoints',
+    'tool_commentBubble',
+    'model',
+    'setting',
+    'info'
+  ] as IUIType[]),
+  actions: {} as any,
+};
+
+export const modes = { empty, edit };
 
 export type IModeType = keyof typeof modes;
 
