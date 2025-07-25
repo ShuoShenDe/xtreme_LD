@@ -326,13 +326,12 @@ jobs:
             e2e-tests/html-report/
           retention-days: 7
 
-  # Visual regression tests - only on main branch when E2E enabled
+  # Visual regression tests
   visual-regression-tests:
     runs-on: [self-hosted, docker-linux]
     container:
       image: mcr.microsoft.com/playwright:v1.54.0-noble
       options: --user root
-    if: github.event.inputs.enable_e2e_tests == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'schedule')
     env:
       CI: "true"
       npm_config_cache: "${{ github.workspace }}/.npm"
