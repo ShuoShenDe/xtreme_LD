@@ -9,27 +9,6 @@ on:
     # Run nightly tests at 2 AM UTC
     - cron: '0 2 * * *'
   workflow_dispatch:
-    inputs:
-      operation:
-        description: 'Choose the operation mode'
-        required: true
-        default: 'deploy AWS-Germany'
-        type: choice
-        options:
-          - 'deploy AWS-Germany'
-          - 'deploy AWS-China-Ningxia'
-      enable_e2e_tests:
-        description: 'Enable or disable E2E tests'
-        required: true
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-
-env:
-  ENABLE_E2E_TESTS: ${{ github.event.inputs.enable_e2e_tests || 'false' }}
-  OPERATION: ${{ github.event.inputs.operation || 'deploy AWS-Germany' }}
 
 jobs:
   build:
@@ -402,7 +381,6 @@ jobs:
   # Deploy to AWS Germany
   deploy-aws-germany:
     runs-on: [self-hosted, docker-linux]
-    if: github.ref == 'refs/heads/main' && (github.event.inputs.operation == 'deploy AWS-Germany' || github.event.inputs.operation == null)
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
