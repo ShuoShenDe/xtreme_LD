@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   schedule:
@@ -391,6 +391,7 @@ jobs:
   deploy-aws-germany:
     runs-on: [self-hosted, docker-linux]
     needs: [build, core-functionality-test, e2e-tests, frontend-lint, performance-tests, visual-regression-tests]
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
