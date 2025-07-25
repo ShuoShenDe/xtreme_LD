@@ -33,11 +33,11 @@ const config = defineConfig({
       { find: '@', replacement: pathResolve('src/') + '/' },
       {
         find: /^image-editor/,
-        replacement: '/src/package/image-editor',
+        replacement: pathResolve('src/package/image-editor'),
       },
       {
         find: /^image-ui/,
-        replacement: '/src/package/image-ui',
+        replacement: pathResolve('src/package/image-ui'),
       },
       {
         find: /^@efficiency/,

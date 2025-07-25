@@ -38,10 +38,13 @@ jobs:
     steps:
       - name: Clean workspace
         run: |
-          echo "Cleaning workspace permissions..."
-          sudo chown -R $USER:$USER ${{ github.workspace }} || true
-          sudo rm -rf ${{ github.workspace }}/.git/index.lock || true
-          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+          echo "Cleaning workspace quickly..."
+          # Remove git locks (try without sudo first, only use sudo if needed)
+          rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || true
+          rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
+          rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || true
+          # Fix git directory permissions (optional, fail silently)
+          chmod -R 755 ${{ github.workspace }}/.git 2>/dev/null || true
       
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,8 +54,9 @@ jobs:
 
       - name: Fix permissions
         run: |
-          sudo chown -R $USER:$USER ${{ github.workspace }}
-          chmod -R 755 ${{ github.workspace }}
+          # Quick permission fix for essential directories only (no sudo required)
+          chmod -R 755 ${{ github.workspace }}/frontend 2>/dev/null || true
+          chmod 644 ${{ github.workspace }}/docker-compose.yml 2>/dev/null || true
 
       - name: Check Docker and Docker Compose
         run: |
@@ -75,21 +79,19 @@ jobs:
     steps:
       - name: Clean workspace
         run: |
-          echo "Cleaning workspace permissions..."
-          sudo chown -R $USER:$USER ${{ github.workspace }} || true
-          sudo rm -rf ${{ github.workspace }}/.git/index.lock || true
-          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+          echo "Cleaning workspace quickly..."
+          # Only remove git locks, skip expensive chown in container
+          rm -rf ${{ github.workspace }}/.git/index.lock || true
+          rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+          rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
+          # Quick permission fix only for git directory
+          chmod -R 755 ${{ github.workspace }}/.git || true
       
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           clean: true
           fetch-depth: 0
-
-      - name: Fix permissions
-        run: |
-          sudo chown -R $USER:$USER ${{ github.workspace }}
-          chmod -R 755 ${{ github.workspace }}
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -161,21 +163,19 @@ jobs:
     steps:
       - name: Clean workspace
         run: |
-          echo "Cleaning workspace permissions..."
-          sudo chown -R $USER:$USER ${{ github.workspace }} || true
-          sudo rm -rf ${{ github.workspace }}/.git/index.lock || true
-          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+          echo "Cleaning workspace quickly..."
+          # Only remove git locks, skip expensive chown in container
+          rm -rf ${{ github.workspace }}/.git/index.lock || true
+          rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+          rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
+          # Quick permission fix only for git directory
+          chmod -R 755 ${{ github.workspace }}/.git || true
       
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           clean: true
           fetch-depth: 0
-
-      - name: Fix permissions
-        run: |
-          sudo chown -R $USER:$USER ${{ github.workspace }}
-          chmod -R 755 ${{ github.workspace }}
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -434,10 +434,13 @@ jobs:
     steps:
       - name: Clean workspace
         run: |
-          echo "Cleaning workspace permissions..."
-          sudo chown -R $USER:$USER ${{ github.workspace }} || true
-          sudo rm -rf ${{ github.workspace }}/.git/index.lock || true
-          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+          echo "Cleaning workspace quickly..."
+          # Remove git locks (try without sudo first, only use sudo if needed)
+          rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || true
+          rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
+          rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || true
+          # Fix git directory permissions (optional, fail silently)
+          chmod -R 755 ${{ github.workspace }}/.git 2>/dev/null || true
       
       - name: Checkout code
         uses: actions/checkout@v4
@@ -447,8 +450,9 @@ jobs:
 
       - name: Fix permissions
         run: |
-          sudo chown -R $USER:$USER ${{ github.workspace }}
-          chmod -R 755 ${{ github.workspace }}
+          # Quick permission fix for essential directories only (no sudo required)
+          chmod -R 755 ${{ github.workspace }}/frontend 2>/dev/null || true
+          chmod 644 ${{ github.workspace }}/docker-compose.yml 2>/dev/null || true
 
       - name: Setup environment for China deployment
         run: |
