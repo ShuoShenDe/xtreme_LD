@@ -17,11 +17,16 @@ jobs:
       - name: Clean workspace
         run: |
           echo "Cleaning workspace quickly..."
+          # Remove git locks
           rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || true
           rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
           rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || true
-          # Fix git directory permissions (optional, fail silently)
+          # Clean cursor directories that cause permission issues
+          rm -rf ${{ github.workspace }}/.cursor 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.cursor 2>/dev/null || true
+          rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || true
+          # Fix permissions for common directories
           chmod -R 755 ${{ github.workspace }}/.git 2>/dev/null || true
+          chmod -R 755 ${{ github.workspace }} 2>/dev/null || true
       
       - name: Checkout code
         uses: actions/checkout@v4
@@ -57,12 +62,15 @@ jobs:
       - name: Clean workspace
         run: |
           echo "Cleaning workspace quickly..."
-          # Only remove git locks, skip expensive chown in container
+          # Remove git locks and problematic directories
           rm -rf ${{ github.workspace }}/.git/index.lock || true
           rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
           rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
-          # Quick permission fix only for git directory
+          rm -rf ${{ github.workspace }}/.cursor || true
+          rm -rf ${{ github.workspace }}/.vscode || true
+          # Fix permissions for directories
           chmod -R 755 ${{ github.workspace }}/.git || true
+          chmod -R 755 ${{ github.workspace }} || true
       
       - name: Checkout code
         uses: actions/checkout@v4
@@ -140,12 +148,15 @@ jobs:
       - name: Clean workspace
         run: |
           echo "Cleaning workspace quickly..."
-          # Only remove git locks, skip expensive chown in container
+          # Remove git locks and problematic directories
           rm -rf ${{ github.workspace }}/.git/index.lock || true
           rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
           rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
-          # Quick permission fix only for git directory
+          rm -rf ${{ github.workspace }}/.cursor || true
+          rm -rf ${{ github.workspace }}/.vscode || true
+          # Fix permissions for directories
           chmod -R 755 ${{ github.workspace }}/.git || true
+          chmod -R 755 ${{ github.workspace }} || true
       
       - name: Checkout code
         uses: actions/checkout@v4
@@ -254,13 +265,12 @@ jobs:
           path: frontend/image-tool/eslint-report.json
           retention-days: 7
 
-  # Performance tests - only on main branch when E2E enabled
+  # Performance tests
   performance-tests:
     runs-on: [self-hosted, docker-linux]
     container:
       image: mcr.microsoft.com/playwright:v1.54.0-noble
       options: --user root
-    if: github.event.inputs.enable_e2e_tests == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'schedule')
     env:
       CI: "true"
       npm_config_cache: "${{ github.workspace }}/.npm"
@@ -381,6 +391,7 @@ jobs:
   # Deploy to AWS Germany
   deploy-aws-germany:
     runs-on: [self-hosted, docker-linux]
+    needs: [build, core-functionality-test, e2e-tests, frontend-lint, performance-tests, visual-regression-tests]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

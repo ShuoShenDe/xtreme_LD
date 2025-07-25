@@ -220,3 +220,21 @@ url={https://xtreme1.io/},
 author = {LF AI & Data Foundation},
 }
 ```
+
+# Github Runner
+```
+sudo ./config.sh \
+  --url https://github.com/ShuoShenDe/xtreme_LD \
+  --token YOUR_RUNNER_TOKEN \
+  --name lddata11_docker \
+  --unattended \
+  --labels self-hosted,linux,x64 \
+  --work _work 
+```
+
+```
+sudo ./svc.sh install
+sudo ./svc.sh start
+sudo ./svc.sh status
+
+```
