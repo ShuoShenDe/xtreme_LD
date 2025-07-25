@@ -34,12 +34,10 @@ env:
 jobs:
   build:
     runs-on: [self-hosted, docker-linux]
-    if: github.event.inputs.operation == 'deploy AWS-Germany' || github.event.inputs.operation == null
     steps:
       - name: Clean workspace
         run: |
           echo "Cleaning workspace quickly..."
-          # Remove git locks (try without sudo first, only use sudo if needed)
           rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || true
           rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
           rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || true
@@ -149,13 +147,12 @@ jobs:
             e2e-tests/html-report/
           retention-days: 3
 
-  # E2E tests - only runs when enabled
+  # E2E tests
   e2e-tests:
     runs-on: [self-hosted, docker-linux]
     container:
       image: mcr.microsoft.com/playwright:v1.54.0-noble
       options: --user root
-    if: github.event.inputs.enable_e2e_tests == 'true'
     env:
       CI: "true"
       npm_config_cache: "${{ github.workspace }}/.npm"
@@ -426,117 +423,4 @@ jobs:
         run: |
           docker image prune -f || true
 
-  # Deploy to AWS China Ningxia
-  deploy-aws-china:
-    runs-on: [self-hosted, docker-linux]
-    needs: [core-functionality-test]
-    if: github.ref == 'refs/heads/main' && github.event.inputs.operation == 'deploy AWS-China-Ningxia'
-    steps:
-      - name: Clean workspace
-        run: |
-          echo "Cleaning workspace quickly..."
-          # Remove git locks (try without sudo first, only use sudo if needed)
-          rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || true
-          rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
-          rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || true
-          # Fix git directory permissions (optional, fail silently)
-          chmod -R 755 ${{ github.workspace }}/.git 2>/dev/null || true
-      
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          clean: true
-          fetch-depth: 0
-
-      - name: Fix permissions
-        run: |
-          # Quick permission fix for essential directories only (no sudo required)
-          chmod -R 755 ${{ github.workspace }}/frontend 2>/dev/null || true
-          chmod 644 ${{ github.workspace }}/docker-compose.yml 2>/dev/null || true
-
-      - name: Setup environment for China deployment
-        run: |
-          docker version
-          docker compose version
-          export RUNNER_UID=$(id -u)
-          export RUNNER_GID=$(id -g)
-          echo "LD_MOUNT_DATA_PATH=/mnt" > .env
-
-      - name: Build and deploy to China
-        run: |
-          docker compose build
-          docker compose down --remove-orphans
-          docker compose up -d
-
-  # Nightly comprehensive tests
-  nightly-tests:
-    runs-on: [self-hosted, docker-linux]
-    container:
-      image: mcr.microsoft.com/playwright:v1.54.0-noble
-      options: --user root
-    if: github.event_name == 'schedule' && github.event.inputs.enable_e2e_tests == 'true'
-    env:
-      CI: "true"
-      npm_config_cache: "${{ github.workspace }}/.npm"
-      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
-      TEST_SCOPE: "comprehensive"
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            .npm/
-            e2e-tests/node_modules/
-            frontend/image-tool/node_modules/
-            frontend/pc-tool/node_modules/
-          key: ${{ runner.os }}-nightly-${{ hashFiles('**/package-lock.json') }}
-
-      - name: Setup Playwright environment
-        run: |
-          cd e2e-tests
-          npm install
-          mkdir -p node_modules/playwright-core/.local-browsers
-          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
-
-      - name: Install frontend dependencies
-        run: |
-          cd frontend/image-tool
-          npm ci
-          cd ../pc-tool
-          npm ci
-
-      - name: Run comprehensive nightly tests
-        run: |
-          cd e2e-tests
-          chmod +x run-tests.sh
-          ./run-tests.sh all --ci
-
-      - name: Upload nightly test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: nightly-test-results
-          path: |
-            e2e-tests/test-results/
-            e2e-tests/html-report/
-            e2e-tests/playwright-report/
-          retention-days: 7
-
-  # Weekend cleanup job
-  weekend-cleanup:
-    runs-on: [self-hosted, docker-linux]
-    if: github.event_name == 'schedule'
-    steps:
-      - name: Docker system cleanup
-        continue-on-error: true
-        run: |
-          echo "执行定期清理..."
-          docker system prune -f || true
-          echo "清理完成"
+ 
