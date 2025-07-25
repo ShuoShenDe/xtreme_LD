@@ -318,10 +318,22 @@ export default class SelectAction extends Action {
             const centerY = (minY + maxY) / 2;
             const centerDistance = mousePoint.distanceTo(new THREE.Vector2(centerX, centerY));
             
+            // 计算包围盒的尺寸，用于归一化距离
+            const boxWidth = maxX - minX;
+            const boxHeight = maxY - minY;
+            const boxSize = Math.sqrt(boxWidth * boxWidth + boxHeight * boxHeight);
+            const normalizedCenterDistance = centerDistance / boxSize;
+            
+            // 越靠近中心，优先级越高
+            let effectivePriority = 3; // Box基础优先级
+            if (normalizedCenterDistance < 0.3) { // 如果点击在Box中心30%区域内
+                effectivePriority = 3.5; // 提升优先级
+            }
+            
             return {
                 object: box,
                 distance: Math.abs(avgDepth) + centerDistance * 0.001,
-                priority: 2 // Box优先级中等
+                priority: effectivePriority
             };
         }
         
@@ -391,12 +403,21 @@ export default class SelectAction extends Action {
         }
         
         // 如果距离小于阈值，认为选中
-        const threshold = 8; // 8像素容差
+        const threshold = 4; // 从8像素减小到4像素，提高选择精确性
         if (minDistance < threshold) {
+            // 添加更精确的距离权重：距离越远，权重越大
+            const distanceWeight = Math.pow(minDistance / threshold, 2); // 平方权重，让远距离选择更难
+            
+            // 只有非常精确的点击（距离小于2像素）才给予较高的选择优先级
+            let effectivePriority = 1; // Polyline基础优先级最低
+            if (minDistance <= 2) {
+                effectivePriority = 1.5; // 非常精确的点击稍微提升优先级，但仍低于Box
+            }
+            
             return {
                 object: polyline,
-                distance: Math.abs(closestDepth) + minDistance * 0.01,
-                priority: 1 // Polyline优先级最低
+                distance: Math.abs(closestDepth) + minDistance * 0.01 + distanceWeight * 0.1,
+                priority: effectivePriority
             };
         }
         

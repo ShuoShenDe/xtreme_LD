@@ -9,7 +9,7 @@ export const SELECTION_CONFIG = {
         LINE: 10,
         POINTS: 10,
         POLYGON: 8,
-        POLYLINE_MULTIPLIER: 3,
+        POLYLINE_MULTIPLIER: 1.5, // 从3减小到1.5，减小Polyline的选择范围
         POLYGON_MULTIPLIER: 2
     },
     EPSILON: 1e-6
