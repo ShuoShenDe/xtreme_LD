@@ -36,8 +36,23 @@ jobs:
     runs-on: [self-hosted, docker-linux]
     if: github.event.inputs.operation == 'deploy AWS-Germany' || github.event.inputs.operation == null
     steps:
+      - name: Clean workspace
+        run: |
+          echo "Cleaning workspace permissions..."
+          sudo chown -R $USER:$USER ${{ github.workspace }} || true
+          sudo rm -rf ${{ github.workspace }}/.git/index.lock || true
+          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+      
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 0
+
+      - name: Fix permissions
+        run: |
+          sudo chown -R $USER:$USER ${{ github.workspace }}
+          chmod -R 755 ${{ github.workspace }}
 
       - name: Check Docker and Docker Compose
         run: |
@@ -58,8 +73,23 @@ jobs:
       npm_config_cache: "${{ github.workspace }}/.npm"
       PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
     steps:
+      - name: Clean workspace
+        run: |
+          echo "Cleaning workspace permissions..."
+          sudo chown -R $USER:$USER ${{ github.workspace }} || true
+          sudo rm -rf ${{ github.workspace }}/.git/index.lock || true
+          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+      
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 0
+
+      - name: Fix permissions
+        run: |
+          sudo chown -R $USER:$USER ${{ github.workspace }}
+          chmod -R 755 ${{ github.workspace }}
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -129,8 +159,23 @@ jobs:
       npm_config_cache: "${{ github.workspace }}/.npm"
       PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
     steps:
+      - name: Clean workspace
+        run: |
+          echo "Cleaning workspace permissions..."
+          sudo chown -R $USER:$USER ${{ github.workspace }} || true
+          sudo rm -rf ${{ github.workspace }}/.git/index.lock || true
+          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+      
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 0
+
+      - name: Fix permissions
+        run: |
+          sudo chown -R $USER:$USER ${{ github.workspace }}
+          chmod -R 755 ${{ github.workspace }}
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -387,8 +432,23 @@ jobs:
     needs: [core-functionality-test]
     if: github.ref == 'refs/heads/main' && github.event.inputs.operation == 'deploy AWS-China-Ningxia'
     steps:
+      - name: Clean workspace
+        run: |
+          echo "Cleaning workspace permissions..."
+          sudo chown -R $USER:$USER ${{ github.workspace }} || true
+          sudo rm -rf ${{ github.workspace }}/.git/index.lock || true
+          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+      
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 0
+
+      - name: Fix permissions
+        run: |
+          sudo chown -R $USER:$USER ${{ github.workspace }}
+          chmod -R 755 ${{ github.workspace }}
 
       - name: Setup environment for China deployment
         run: |
