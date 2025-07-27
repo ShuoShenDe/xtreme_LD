@@ -14,31 +14,11 @@ jobs:
   build:
     runs-on: [self-hosted, docker-linux]
     steps:
-      - name: Clean workspace
-        run: |
-          echo "Cleaning workspace quickly..."
-          # Remove git locks
-          rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || true
-          rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
-          rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || true
-          # Clean cursor directories that cause permission issues
-          rm -rf ${{ github.workspace }}/.cursor 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.cursor 2>/dev/null || true
-          rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || true
-          # Fix permissions for common directories
-          chmod -R 755 ${{ github.workspace }}/.git 2>/dev/null || true
-          chmod -R 755 ${{ github.workspace }} 2>/dev/null || true
-      
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           clean: true
           fetch-depth: 0
-
-      - name: Fix permissions
-        run: |
-          # Quick permission fix for essential directories only (no sudo required)
-          chmod -R 755 ${{ github.workspace }}/frontend 2>/dev/null || true
-          chmod 644 ${{ github.workspace }}/docker-compose.yml 2>/dev/null || true
 
       - name: Check Docker and Docker Compose
         run: |
@@ -68,6 +48,14 @@ jobs:
           rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
           rm -rf ${{ github.workspace }}/.cursor || true
           rm -rf ${{ github.workspace }}/.vscode || true
+          # Clean npm cache directories with permission fixes
+          echo "Cleaning npm cache directories..."
+          chown -R root:root ${{ github.workspace }}/.npm 2>/dev/null || true
+          chmod -R 755 ${{ github.workspace }}/.npm 2>/dev/null || true
+          rm -rf ${{ github.workspace }}/.npm 2>/dev/null || true
+          # Clean other npm-related directories
+          find ${{ github.workspace }} -name "node_modules" -type d -exec rm -rf {} + 2>/dev/null || true
+          find ${{ github.workspace }} -name ".npm" -type d -exec rm -rf {} + 2>/dev/null || true
           # Fix permissions for directories
           chmod -R 755 ${{ github.workspace }}/.git || true
           chmod -R 755 ${{ github.workspace }} || true
@@ -132,6 +120,7 @@ jobs:
           path: |
             e2e-tests/test-results/
             e2e-tests/html-report/
+            e2e-tests/playwright-report/
           retention-days: 3
 
   # E2E tests
