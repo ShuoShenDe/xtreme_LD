@@ -16,14 +16,15 @@ jobs:
     steps:
       - name: Clean problematic directories
         run: |
-           echo "Cleaning directories that block checkout..."
-           # Remove directories that cause checkout to fail
-           rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || true
-           # Remove git locks
-           rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || true
-           rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
-           rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || true
-      
+          echo "Using sudo to clean workspace..."
+          sudo rm -rf ${{ github.workspace }}/.cursor 2>/dev/null || true
+          sudo rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || true
+          sudo rm -rf ${{ github.workspace }}/.npm 2>/dev/null || true
+          sudo rm -rf ${{ github.workspace }}/node_modules 2>/dev/null || true
+          # 清理git锁文件
+          sudo rm -rf ${{ github.workspace }}/.git/*.lock 2>/dev/null || true
+          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
+        
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -56,7 +57,6 @@ jobs:
           rm -rf ${{ github.workspace }}/.git/index.lock || true
           rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
           rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
-          rm -rf ${{ github.workspace }}/.cursor || true
           rm -rf ${{ github.workspace }}/.vscode || true
           # Clean npm cache directories with permission fixes
           echo "Cleaning npm cache directories..."
@@ -151,7 +151,6 @@ jobs:
           rm -rf ${{ github.workspace }}/.git/index.lock || true
           rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
           rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
-          rm -rf ${{ github.workspace }}/.cursor || true
           rm -rf ${{ github.workspace }}/.vscode || true
           # Fix permissions for directories
           chmod -R 755 ${{ github.workspace }}/.git || true

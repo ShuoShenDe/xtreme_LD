@@ -43,7 +43,7 @@ export class ImageToolPage extends BasePage {
     
     // 等待编辑器容器出现
     await this.page.waitForFunction(() => {
-      const editorContainer = document.querySelector('[class*="editor"], [class*="image"], [id*="editor"]');
+      const editorContainer = document.querySelector('.image-tool-editor, [class*="editor"], [class*="image"], [id*="editor"]');
       return editorContainer !== null;
     }, { timeout: 15000 });
     

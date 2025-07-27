@@ -21,10 +21,9 @@ test.describe('Control Points Verification Tests', () => {
       timeout: 30000
     });
 
-    // 使用与成功测试相同的等待策略
-    await imageToolPage.waitForPageLoad();
-    await imageToolPage.waitForDataLoad();
-    await imageToolPage.waitForEditorReady();
+    // 使用与成功测试相同的简单等待策略
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(3000);
   });
 
   test('should verify polyline editing functionality', async () => {
