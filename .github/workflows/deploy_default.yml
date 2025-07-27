@@ -14,6 +14,16 @@ jobs:
   build:
     runs-on: [self-hosted, docker-linux]
     steps:
+      - name: Clean problematic directories
+        run: |
+           echo "Cleaning directories that block checkout..."
+           # Remove directories that cause checkout to fail
+           rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || true
+           # Remove git locks
+           rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/index.lock 2>/dev/null || true
+           rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
+           rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || sudo rm -rf ${{ github.workspace }}/.git/HEAD.lock 2>/dev/null || true
+      
       - name: Checkout code
         uses: actions/checkout@v4
         with:

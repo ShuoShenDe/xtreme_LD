@@ -76,7 +76,6 @@ efficiency-service/redis_data/
 *.tmp
 *.temp
 Thumbs.db
-
 # E2E Testing
 e2e-tests/test-results/
 e2e-tests/playwright-report/
