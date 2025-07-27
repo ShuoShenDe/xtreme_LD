@@ -313,6 +313,9 @@ export default class Polygon3D extends THREE.Group {
     raycast(raycaster: THREE.Raycaster, intersects: THREE.Intersection[]): void {
         if (!this.visible || this.points.length < 3) return;
 
+        // 确保matrixWorld是最新的
+        this.updateMatrixWorld();
+
         // Use temporary array for THREE.js intersections
         const tempIntersects: THREE.Intersection[] = [];
         
@@ -324,11 +327,11 @@ export default class Polygon3D extends THREE.Group {
             this.mesh.raycast(raycaster, tempIntersects);
         }
         
-        // If no intersections found with wireframe/mesh, try manual polygon check
-        if (tempIntersects.length === 0) {
-            this.raycastPolygon(raycaster, intersects);
-        } else {
-            // Convert wireframe/mesh intersections to proper format and ensure correct distance
+        // 始终尝试手动polygon检查，提高选择成功率
+        this.raycastPolygon(raycaster, intersects);
+        
+        // 如果wireframe/mesh也有交点，添加它们
+        if (tempIntersects.length > 0) {
             tempIntersects.forEach(intersection => {
                 // Calculate accurate world distance
                 const worldPoint = intersection.point.clone();

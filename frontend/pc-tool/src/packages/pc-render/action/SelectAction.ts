@@ -110,6 +110,9 @@ export default class SelectAction extends Action {
             }
         });
         
+        // 确保raycaster有camera参数，用于adaptive threshold计算
+        (this.raycaster as any).camera = this.renderView.camera;
+        
         // 先检查是否有控制点编辑Action在处理事件
         const pointEditAction = this.renderView.getAction('point-edit');
         if (pointEditAction && (pointEditAction as any).areControlPointsInteractive && (pointEditAction as any).areControlPointsInteractive()) {
@@ -517,8 +520,11 @@ export default class SelectAction extends Action {
     private fallbackRaycastSelection(pos: THREE.Vector2, annotate3D: any[]): THREE.Object3D | null {
         this.raycaster.setFromCamera(pos, this.renderView.camera);
         
-        // 基本的射线投射参数
-        this.raycaster.params.Line = { threshold: SELECTION_CONFIG.THRESHOLDS.LINE };
+        // 确保raycaster有camera参数，用于自定义raycast方法
+        (this.raycaster as any).camera = this.renderView.camera;
+        
+        // 使用更大的阈值以提高选择成功率
+        this.raycaster.params.Line = { threshold: SELECTION_CONFIG.THRESHOLDS.LINE * 2 };
         this.raycaster.params.Points = { threshold: SELECTION_CONFIG.THRESHOLDS.POINTS };
         this.raycaster.params.Mesh = { threshold: 1 };
         
@@ -536,7 +542,14 @@ export default class SelectAction extends Action {
         if (validIntersects.length > 0) {
             // 返回距离最近的对象
             validIntersects.sort((a, b) => a.distance - b.distance);
-            return validIntersects[0].object;
+            
+            // 对于Group类型的对象（如Polygon3D），返回parent对象
+            const selectedObject = validIntersects[0].object;
+            if (selectedObject.parent && (selectedObject.parent.name === 'Polygon3D' || selectedObject.parent.name === 'Polyline3D')) {
+                return selectedObject.parent as THREE.Object3D;
+            }
+            
+            return selectedObject;
         }
         
         return null;

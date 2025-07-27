@@ -120,6 +120,9 @@ export default class Polyline3D extends THREE.Line {
     raycast(raycaster: THREE.Raycaster, intersects: THREE.Intersection[]) {
         if (!this.visible || this._points.length < 2) return;
 
+        // 确保matrixWorld是最新的
+        this.updateMatrixWorld();
+
         // First try Three.js built-in raycast for Line
         const originalIntersects = intersects.slice();
         super.raycast(raycaster, intersects);
