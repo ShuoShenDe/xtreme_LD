@@ -8,12 +8,16 @@ let defaultMaterial = new THREE.PointsMaterial({
     color: 0xffffff,
     size: 1,
     sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.7,
 });
 
 let highlightMaterial = new THREE.PointsMaterial({
     color: 0xff6600,
     size: 1.5,
     sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.8,
 });
 
 interface IEditConfig {
