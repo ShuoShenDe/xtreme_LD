@@ -12,6 +12,7 @@ export default class PolylineTool extends ShapeTool {
   points: Vector2[] = [];
   _minPointNum = 2;
   intervalTm: number = 0;
+  selectedAnchorIndex: number = -1; // 添加选中锚点索引
 
   holder: Line;
   holderLastLine: Line;
@@ -228,6 +229,12 @@ export default class PolylineTool extends ShapeTool {
         pointIndex: index,
       });
       
+      // 添加点击事件来选中锚点
+      anchor.on('click', (e: Konva.KonvaEventObject<MouseEvent>) => {
+        e.cancelBubble = true;
+        this.selectAnchor(anchor, index);
+      });
+      
       anchor.on('dragstart', () => {
         this.onEditStart();
       });
@@ -238,10 +245,23 @@ export default class PolylineTool extends ShapeTool {
         const objX = this.object!.x();
         const objY = this.object!.y();
         // 转换为相对坐标
-        currentPoints[index] = {
+        const newPoint = {
           x: anchorPos.x - objX,
           y: anchorPos.y - objY
         };
+        currentPoints[index] = newPoint;
+        
+        // 检查点合并
+        const mergedPoints = this.checkAndMergePoints(currentPoints, index);
+        if (mergedPoints.length !== currentPoints.length) {
+          // 发生了合并，更新锚点
+          this.object!.setAttrs({ points: mergedPoints });
+          this.updateEditObject(); // 重新创建锚点
+          this.view.draw();
+          this.onEditChange();
+          return;
+        }
+        
         this.object!.setAttrs({ points: currentPoints });
         this.view.draw();
         this.onEditChange();
@@ -253,6 +273,90 @@ export default class PolylineTool extends ShapeTool {
       
       this.editGroup.add(anchor);
     });
+  }
+
+  // 检查并合并重合的点
+  checkAndMergePoints(points: Vector2[], dragIndex: number): Vector2[] {
+    const mergeThreshold = 10; // 像素阈值
+    const dragPoint = points[dragIndex];
+    
+    // 检查与前一个点的距离
+    if (dragIndex > 0) {
+      const prevPoint = points[dragIndex - 1];
+      const distToPrev = Math.sqrt(
+        Math.pow(dragPoint.x - prevPoint.x, 2) + Math.pow(dragPoint.y - prevPoint.y, 2)
+      );
+      if (distToPrev < mergeThreshold) {
+        // 与前一个点合并，删除当前点
+        const mergedPoints = [...points];
+        mergedPoints.splice(dragIndex, 1);
+        return mergedPoints;
+      }
+    }
+    
+    // 检查与后一个点的距离
+    if (dragIndex < points.length - 1) {
+      const nextPoint = points[dragIndex + 1];
+      const distToNext = Math.sqrt(
+        Math.pow(dragPoint.x - nextPoint.x, 2) + Math.pow(dragPoint.y - nextPoint.y, 2)
+      );
+      if (distToNext < mergeThreshold) {
+        // 与后一个点合并，删除当前点
+        const mergedPoints = [...points];
+        mergedPoints.splice(dragIndex, 1);
+        return mergedPoints;
+      }
+    }
+    
+    return points;
+  }
+
+  // 选中锚点
+  selectAnchor(anchor: Anchor, index: number) {
+    this.selectedAnchorIndex = index;
+    
+    // 更新所有锚点的选中状态
+    const anchors = this.editGroup.children?.filter(child => child instanceof Anchor) as Anchor[];
+    anchors.forEach((a, i) => {
+      a.state = a.state || {};
+      a.state.select = i === index;
+    });
+    
+    this.view.updateStateStyle(anchors);
+  }
+
+  // 支持编辑模式下的删除动作
+  checkEditAction(action: ToolAction) {
+    return action === ToolAction.del;
+  }
+
+  // 删除选中的锚点
+  onToolDelete() {
+    if (!this.object || this.selectedAnchorIndex === -1) return;
+    
+    const currentPoints = [...(this.object.attrs.points || [])];
+    
+    // 检查最小点数限制
+    if (currentPoints.length <= this._minPointNum) {
+      console.warn(`Cannot delete point: minimum ${this._minPointNum} points required`);
+      return;
+    }
+    
+    // 删除选中的点
+    currentPoints.splice(this.selectedAnchorIndex, 1);
+    
+    // 更新对象
+    this.object.setAttrs({ points: currentPoints });
+    
+    // 重置选中状态
+    this.selectedAnchorIndex = -1;
+    
+    // 重新创建编辑锚点
+    this.updateEditObject();
+    this.view.draw();
+    this.onEditChange();
+    
+    console.log(`Point deleted. Remaining points: ${currentPoints.length}`);
   }
 
   onObjectChange() {
