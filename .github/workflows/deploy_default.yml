@@ -212,7 +212,7 @@ jobs:
         run: |
           cd e2e-tests
           chmod +x run-tests.sh
-          ./run-tests.sh all --ci
+          ./run-tests.sh all --ci 2>&1 | tee e2e-test-output.log
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -230,9 +230,9 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          ERR=$(tail -n 200 core-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
+          ERR=$(tail -n 200 e2e-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
           curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"❌ *Core Functionality Tests Failed*\nError: $ERR\"}" \
+            --data "{\"text\":\"❌ *E2E Tests Failed*\nError: $ERR\"}" \
             $SLACK_WEBHOOK_URL
 
   # Frontend linting
