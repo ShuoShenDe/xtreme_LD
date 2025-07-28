@@ -4,18 +4,19 @@ import { ImageToolPage } from '../../pages/image-tool/image-tool-page';
 test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => {
   let imageToolPage: ImageToolPage;
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }: { page: any }) => {
     imageToolPage = new ImageToolPage(page);
     
-    // 初始化Mock环境（如果需要）
-    await imageToolPage.initializeMockEnvironment();
-    
-    // 导航到测试页面
-    await page.goto('http://localhost:3000');
+    // 导航到测试页面 - 使用和成功测试完全相同的设置
+    await page.goto('http://localhost:3300/?recordId=test-record-123&datasetId=test-dataset-456');
     
     // 等待页面加载完成
-    await imageToolPage.waitForPageLoad();
-    await imageToolPage.waitForDataLoad();
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(3000);
+  
+    // 等待编辑器就绪
+    await imageToolPage.waitForEditorReady();
+    
   });
 
   test('should activate ISS tool successfully', async () => {
