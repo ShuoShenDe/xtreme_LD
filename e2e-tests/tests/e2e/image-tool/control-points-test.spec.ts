@@ -1,32 +1,25 @@
 import { test, expect } from '@playwright/test';
 import { ImageToolPage } from '../../pages/image-tool/image-tool-page';
 
-// 设置Mock环境变量
-process.env.VITE_DISABLE_MOCK = "false";
-
 test.describe('Control Points Verification Tests', () => {
-  let page: any;
   let imageToolPage: ImageToolPage;
 
-  test.beforeEach(async ({ page: testPage, context }) => {
-    page = testPage;
+  test.beforeEach(async ({ page }: { page: any }) => {
     imageToolPage = new ImageToolPage(page);
-
-    // 初始化Mock环境
-    await imageToolPage.initializeMockEnvironment();
-
-    // 导航到image-tool - 使用和之前成功测试相同的设置
-    await page.goto('http://localhost:3300', {
-      waitUntil: 'networkidle', 
-      timeout: 30000
-    });
-
-    // 使用与成功测试相同的简单等待策略
+    
+    // 导航到测试页面 - 使用和成功测试完全相同的设置
+    await page.goto('http://localhost:3300/?recordId=test-record-123&datasetId=test-dataset-456');
+    
+    // 等待页面加载完成
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000);
+  
+    // 等待编辑器就绪
+    await imageToolPage.waitForEditorReady();
+    
   });
 
-  test('should verify polyline editing functionality', async () => {
+  test('should verify polyline editing functionality', async ({ page }: { page: any }) => {
     console.log('🧪 Test: Verify polyline control points functionality');
 
     // 1. 创建polyline（使用和之前成功测试相同的方法）
@@ -175,7 +168,7 @@ test.describe('Control Points Verification Tests', () => {
     }
   });
 
-  test('should verify polygon editing functionality', async () => {
+  test('should verify polygon editing functionality', async ({ page }) => {
     console.log('🧪 Test: Verify polygon control points functionality');
 
     // 1. 创建polygon
