@@ -1381,67 +1381,85 @@ export class ImageToolPage extends BasePage {
 
   // 验证形状是否被修改
   async verifyShapeModified(originalPoints: Array<{x: number, y: number}>): Promise<boolean> {
-    const currentPoints = await this.getControlPointPositions();
-    
-    console.log(`Shape modification check:`);
-    console.log(`- Original points (${originalPoints.length}):`, originalPoints);
-    console.log(`- Current points (${currentPoints.length}):`, currentPoints);
-    
-    if (currentPoints.length === 0) {
-      console.log('⚠️ No current control points found - may indicate shape was not created or selected');
-      // 如果没有找到控制点，检查是否有任何形状变化迹象
-      return await this.page.evaluate(() => {
-        // 检查是否有编辑历史或形状变化
-        const editor = (window as any).editor;
-        if (editor && editor.cmdManager) {
-          const hasCommands = editor.cmdManager.history && editor.cmdManager.history.length > 0;
-          console.log('Editor has command history:', hasCommands);
-          return hasCommands;
+    try {
+      const currentPoints = await this.getControlPointPositions();
+      
+      console.log(`Shape modification check:`);
+      console.log(`- Original points (${originalPoints.length}):`, originalPoints);
+      console.log(`- Current points (${currentPoints.length}):`, currentPoints);
+      
+      if (currentPoints.length === 0) {
+        console.log('⚠️ No current control points found - may indicate shape was not created or selected');
+        // 如果没有找到控制点，检查是否有任何形状变化迹象
+        try {
+          const hasCommandHistory = await this.page.evaluate(() => {
+            try {
+              // 检查是否有编辑历史或形状变化
+              const editor = (window as any).editor;
+              if (editor && editor.cmdManager) {
+                const hasCommands = editor.cmdManager.history && editor.cmdManager.history.length > 0;
+                console.log('Editor has command history:', hasCommands);
+                return hasCommands;
+              }
+              return false;
+            } catch (error) {
+              console.log('Error checking command history:', error);
+              return false;
+            }
+          });
+          return hasCommandHistory;
+        } catch (error) {
+          console.log('Failed to check command history:', error);
+          return false;
         }
-        return false;
-      });
-    }
-    
-    if (currentPoints.length !== originalPoints.length) {
-      console.log(`✅ Point count changed: ${originalPoints.length} → ${currentPoints.length}`);
-      return true; // 点数变化
-    }
-    
-    // 检查是否有任何点的位置发生了明显变化
-    let maxDistance = 0;
-    let movedPoints = 0;
-    
-    for (let i = 0; i < Math.min(currentPoints.length, originalPoints.length); i++) {
-      const current = currentPoints[i];
-      const original = originalPoints[i];
-      
-      const distance = Math.sqrt(
-        Math.pow(current.x - original.x, 2) + 
-        Math.pow(current.y - original.y, 2)
-      );
-      
-      maxDistance = Math.max(maxDistance, distance);
-      
-      if (distance > 3) { // 降低检测阈值为3像素
-        console.log(`✅ Point ${i} moved ${distance.toFixed(2)} pixels from (${original.x.toFixed(1)}, ${original.y.toFixed(1)}) to (${current.x.toFixed(1)}, ${current.y.toFixed(1)})`);
-        movedPoints++;
       }
+      
+      if (currentPoints.length !== originalPoints.length) {
+        console.log(`✅ Point count changed: ${originalPoints.length} → ${currentPoints.length}`);
+        return true; // 点数变化
+      }
+      
+      // 检查是否有任何点的位置发生了明显变化
+      let maxDistance = 0;
+      let movedPoints = 0;
+      
+      for (let i = 0; i < Math.min(currentPoints.length, originalPoints.length); i++) {
+        const current = currentPoints[i];
+        const original = originalPoints[i];
+        
+        const distance = Math.sqrt(
+          Math.pow(current.x - original.x, 2) + 
+          Math.pow(current.y - original.y, 2)
+        );
+        
+        maxDistance = Math.max(maxDistance, distance);
+        
+        if (distance > 3) { // 降低检测阈值为3像素
+          console.log(`✅ Point ${i} moved ${distance.toFixed(2)} pixels from (${original.x.toFixed(1)}, ${original.y.toFixed(1)}) to (${current.x.toFixed(1)}, ${current.y.toFixed(1)})`);
+          movedPoints++;
+        }
+      }
+      
+      console.log(`Max movement distance: ${maxDistance.toFixed(2)}px, Points moved: ${movedPoints}`);
+      
+      if (movedPoints > 0) {
+        return true;
+      }
+      
+      // 如果没有检测到明显移动，但有轻微变化也认为是修改
+      if (maxDistance > 1) {
+        console.log(`⚠️ Minor shape modification detected (max distance: ${maxDistance.toFixed(2)}px)`);
+        return true;
+      }
+      
+      console.log('❌ No shape modification detected');
+      return false;
+      
+    } catch (error) {
+      console.error('Error in verifyShapeModified:', error);
+      // 如果出现错误，默认返回 false
+      return false;
     }
-    
-    console.log(`Max movement distance: ${maxDistance.toFixed(2)}px, Points moved: ${movedPoints}`);
-    
-    if (movedPoints > 0) {
-      return true;
-    }
-    
-    // 如果没有检测到明显移动，但有轻微变化也认为是修改
-    if (maxDistance > 1) {
-      console.log(`⚠️ Minor shape modification detected (max distance: ${maxDistance.toFixed(2)}px)`);
-      return true;
-    }
-    
-    console.log('❌ No shape modification detected');
-    return false;
   }
 
   // 取消选择（点击空白区域）
