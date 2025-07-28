@@ -407,8 +407,6 @@ jobs:
     needs: [build, core-functionality-test, e2e-tests, frontend-lint, performance-tests, visual-regression-tests]
     if: github.event_name != 'pull_request'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
       - name: Setup environment
         run: |
