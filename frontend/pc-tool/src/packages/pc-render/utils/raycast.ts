@@ -6,11 +6,11 @@ import { get } from './tempVar';
  */
 export const SELECTION_CONFIG = {
     THRESHOLDS: {
-        LINE: 10,
-        POINTS: 10,
-        POLYGON: 8,
-        POLYLINE_MULTIPLIER: 3,
-        POLYGON_MULTIPLIER: 2
+        LINE: 15,  // 增加线条选择阈值
+        POINTS: 15, // 增加点选择阈值
+        POLYGON: 12, // 增加多边形选择阈值
+        POLYLINE_MULTIPLIER: 4, // 增加折线倍数
+        POLYGON_MULTIPLIER: 3   // 增加多边形倍数
     },
     EPSILON: 1e-6
 };

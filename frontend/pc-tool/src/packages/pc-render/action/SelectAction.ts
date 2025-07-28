@@ -131,7 +131,14 @@ export default class SelectAction extends Action {
         }
         
         // 如果屏幕投影方法没有找到对象，回退到传统射线投射方法
-        return this.fallbackRaycastSelection(pos, annotate3D);
+        const raycastResult = this.fallbackRaycastSelection(pos, annotate3D);
+        if (raycastResult) {
+            return raycastResult;
+        }
+        
+        // 最后尝试：使用更大的鼠标位置容差
+        const expandedResults = this.tryExpandedSelection(event, annotate3D);
+        return expandedResults;
     }
     
     /**
@@ -593,6 +600,55 @@ export default class SelectAction extends Action {
             }
             
             return selectedObject;
+        }
+        
+        return null;
+    }
+
+    /**
+     * 扩展选择尝试 - 使用更大的容差范围
+     */
+    private tryExpandedSelection(event: MouseEvent, annotate3D: any[]): THREE.Object3D | null {
+        try {
+            const camera = this.renderView.camera;
+            const expandRadius = 20; // 扩展20像素搜索范围
+            
+            // 尝试周围多个点
+            const searchPoints = [
+                { dx: 0, dy: 0 },     // 原点
+                { dx: -expandRadius, dy: 0 },
+                { dx: expandRadius, dy: 0 },
+                { dx: 0, dy: -expandRadius },
+                { dx: 0, dy: expandRadius },
+                { dx: -expandRadius/2, dy: -expandRadius/2 },
+                { dx: expandRadius/2, dy: -expandRadius/2 },
+                { dx: -expandRadius/2, dy: expandRadius/2 },
+                { dx: expandRadius/2, dy: expandRadius/2 }
+            ];
+            
+            for (const point of searchPoints) {
+                const testX = event.offsetX + point.dx;
+                const testY = event.offsetY + point.dy;
+                
+                // 确保在视图范围内
+                if (testX >= 0 && testX <= this.renderView.width && 
+                    testY >= 0 && testY <= this.renderView.height) {
+                    
+                    const mousePoint = new THREE.Vector2(testX, testY);
+                    
+                    for (const obj of annotate3D) {
+                        if (!obj.visible || !obj.parent || !obj.parent.visible) continue;
+                        
+                        const result = this.checkObjectScreenProjection(obj, mousePoint, camera);
+                        if (result) {
+                            console.log(`✅ Expanded selection found at offset (${point.dx}, ${point.dy})`);
+                            return result.object;
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Error in expanded selection:', error);
         }
         
         return null;
