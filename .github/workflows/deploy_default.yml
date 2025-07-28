@@ -11,28 +11,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  # build:
-  #   runs-on: [self-hosted, docker-linux]
-  #   steps:
-  #     - name: Clean problematic directories
-  #       run: |
-  #         echo "Using sudo to clean workspace..."
-  #         sudo rm -rf ${{ github.workspace }}/.cursor 2>/dev/null || true
-  #         sudo rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || true
-  #         sudo rm -rf ${{ github.workspace }}/.npm 2>/dev/null || true
-  #         sudo rm -rf ${{ github.workspace }}/node_modules 2>/dev/null || true
-  #         # 清理git锁文件
-  #         sudo rm -rf ${{ github.workspace }}/.git/*.lock 2>/dev/null || true
-  #         sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
+  build:
+    runs-on: [self-hosted, docker-linux]
+    steps:
+      - name: Clean problematic directories
+        run: |
+          echo "Using sudo to clean workspace..."
+          sudo rm -rf ${{ github.workspace }}/.cursor 2>/dev/null || true
+          sudo rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || true
+          sudo rm -rf ${{ github.workspace }}/.npm 2>/dev/null || true
+          sudo rm -rf ${{ github.workspace }}/node_modules 2>/dev/null || true
+          # 清理git锁文件
+          sudo rm -rf ${{ github.workspace }}/.git/*.lock 2>/dev/null || true
+          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
         
 
-  #     - name: Check Docker and Docker Compose
-  #       run: |
-  #         docker version
-  #         docker compose version
+      - name: Check Docker and Docker Compose
+        run: |
+          docker version
+          docker compose version
 
-  #     - name: Build Docker images
-  #       run: docker compose build
+      - name: Build Docker images
+        run: docker compose build
 
   # Core functionality test - always runs
   core-functionality-test:
@@ -236,194 +236,194 @@ jobs:
             $SLACK_WEBHOOK_URL
 
   # Frontend linting
-  # frontend-lint:
-  #   runs-on: [self-hosted, docker-linux]
-  #   container:
-  #     image: node:18-alpine
-  #   env:
-  #     npm_config_cache: "${{ github.workspace }}/.npm"
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+  frontend-lint:
+    runs-on: [self-hosted, docker-linux]
+    container:
+      image: node:18-alpine
+    env:
+      npm_config_cache: "${{ github.workspace }}/.npm"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Cache dependencies
-  #       uses: actions/cache@v4
-  #       with:
-  #         path: |
-  #           .npm/
-  #           frontend/image-tool/node_modules/
-  #         key: ${{ runner.os }}-lint-${{ hashFiles('frontend/image-tool/package-lock.json') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-lint-
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm/
+            frontend/image-tool/node_modules/
+          key: ${{ runner.os }}-lint-${{ hashFiles('frontend/image-tool/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lint-
 
-  #     - name: Install dependencies
-  #       run: |
-  #         cd frontend/image-tool
-  #         npm ci
+      - name: Install dependencies
+        run: |
+          cd frontend/image-tool
+          npm ci
 
-  #     - name: Run ESLint
-  #       run: |
-  #         cd frontend/image-tool
-  #         npm run lint:eslint || true
+      - name: Run ESLint
+        run: |
+          cd frontend/image-tool
+          npm run lint:eslint || true
 
-  #     - name: Run TypeScript check
-  #       run: |
-  #         cd frontend/image-tool
-  #         npx tsc --noEmit || true
+      - name: Run TypeScript check
+        run: |
+          cd frontend/image-tool
+          npx tsc --noEmit || true
 
-  #     - name: Upload lint results
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: lint-results
-  #         path: frontend/image-tool/eslint-report.json
-  #         retention-days: 7
+      - name: Upload lint results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lint-results
+          path: frontend/image-tool/eslint-report.json
+          retention-days: 7
 
   # Performance tests
-  # performance-tests:
-  #   runs-on: [self-hosted, docker-linux]
-  #   container:
-  #     image: mcr.microsoft.com/playwright:v1.54.0-noble
-  #     options: --user root
-  #   env:
-  #     CI: "true"
-  #     npm_config_cache: "${{ github.workspace }}/.npm"
-  #     PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+  performance-tests:
+    runs-on: [self-hosted, docker-linux]
+    container:
+      image: mcr.microsoft.com/playwright:v1.54.0-noble
+      options: --user root
+    env:
+      CI: "true"
+      npm_config_cache: "${{ github.workspace }}/.npm"
+      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Cache dependencies
-  #       uses: actions/cache@v4
-  #       with:
-  #         path: |
-  #           .npm/
-  #           e2e-tests/node_modules/
-  #           frontend/image-tool/node_modules/
-  #           frontend/pc-tool/node_modules/
-  #         key: ${{ runner.os }}-performance-${{ hashFiles('**/package-lock.json') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-performance-
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm/
+            e2e-tests/node_modules/
+            frontend/image-tool/node_modules/
+            frontend/pc-tool/node_modules/
+          key: ${{ runner.os }}-performance-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-performance-
 
-  #     - name: Setup Playwright environment
-  #       run: |
-  #         cd e2e-tests
-  #         npm install
-  #         mkdir -p node_modules/playwright-core/.local-browsers
-  #         ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+      - name: Setup Playwright environment
+        run: |
+          cd e2e-tests
+          npm install
+          mkdir -p node_modules/playwright-core/.local-browsers
+          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
 
-  #     - name: Install frontend dependencies
-  #       run: |
-  #         cd frontend/image-tool
-  #         npm ci
-  #         cd ../pc-tool
-  #         npm ci
+      - name: Install frontend dependencies
+        run: |
+          cd frontend/image-tool
+          npm ci
+          cd ../pc-tool
+          npm ci
 
-  #     - name: Run performance tests
-  #       continue-on-error: true
-  #       run: |
-  #         cd e2e-tests
-  #         chmod +x run-tests.sh
-  #         ./run-tests.sh performance --ci
+      - name: Run performance tests
+        continue-on-error: true
+        run: |
+          cd e2e-tests
+          chmod +x run-tests.sh
+          ./run-tests.sh performance --ci
 
-  #     - name: Upload performance results
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: performance-test-results
-  #         path: |
-  #           e2e-tests/test-results/
-  #           e2e-tests/html-report/
-  #         retention-days: 7
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-test-results
+          path: |
+            e2e-tests/test-results/
+            e2e-tests/html-report/
+          retention-days: 7
 
   # Visual regression tests
-  # visual-regression-tests:
-  #   runs-on: [self-hosted, docker-linux]
-  #   container:
-  #     image: mcr.microsoft.com/playwright:v1.54.0-noble
-  #     options: --user root
-  #   env:
-  #     CI: "true"
-  #     npm_config_cache: "${{ github.workspace }}/.npm"
-  #     PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+  visual-regression-tests:
+    runs-on: [self-hosted, docker-linux]
+    container:
+      image: mcr.microsoft.com/playwright:v1.54.0-noble
+      options: --user root
+    env:
+      CI: "true"
+      npm_config_cache: "${{ github.workspace }}/.npm"
+      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Cache dependencies
-  #       uses: actions/cache@v4
-  #       with:
-  #         path: |
-  #           .npm/
-  #           e2e-tests/node_modules/
-  #           frontend/image-tool/node_modules/
-  #           frontend/pc-tool/node_modules/
-  #         key: ${{ runner.os }}-visual-${{ hashFiles('**/package-lock.json') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-visual-
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm/
+            e2e-tests/node_modules/
+            frontend/image-tool/node_modules/
+            frontend/pc-tool/node_modules/
+          key: ${{ runner.os }}-visual-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-visual-
 
-  #     - name: Setup Playwright environment
-  #       run: |
-  #         cd e2e-tests
-  #         npm install
-  #         mkdir -p node_modules/playwright-core/.local-browsers
-  #         ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+      - name: Setup Playwright environment
+        run: |
+          cd e2e-tests
+          npm install
+          mkdir -p node_modules/playwright-core/.local-browsers
+          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
 
-  #     - name: Install frontend dependencies
-  #       run: |
-  #         cd frontend/image-tool
-  #         npm ci
-  #         cd ../pc-tool
-  #         npm ci
+      - name: Install frontend dependencies
+        run: |
+          cd frontend/image-tool
+          npm ci
+          cd ../pc-tool
+          npm ci
 
-  #     - name: Run visual regression tests
-  #       continue-on-error: true
-  #       run: |
-  #         cd e2e-tests
-  #         chmod +x run-tests.sh
-  #         ./run-tests.sh visual --ci
+      - name: Run visual regression tests
+        continue-on-error: true
+        run: |
+          cd e2e-tests
+          chmod +x run-tests.sh
+          ./run-tests.sh visual --ci
 
-  #     - name: Upload visual test results
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: visual-regression-results
-  #         path: |
-  #           e2e-tests/test-results/
-  #           e2e-tests/html-report/
-  #         retention-days: 14
+      - name: Upload visual test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-regression-results
+          path: |
+            e2e-tests/test-results/
+            e2e-tests/html-report/
+          retention-days: 14
 
   # Deploy to AWS Germany
-  # deploy-aws-germany:
-  #   runs-on: [self-hosted, docker-linux]
-  #   needs: [build, core-functionality-test, e2e-tests, frontend-lint, performance-tests, visual-regression-tests]
-  #   if: github.event_name != 'pull_request'
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+  deploy-aws-germany:
+    runs-on: [self-hosted, docker-linux]
+    needs: [build, core-functionality-test, e2e-tests, frontend-lint, performance-tests, visual-regression-tests]
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Setup environment
-  #       run: |
-  #         docker version
-  #         docker compose version
-  #         export RUNNER_UID=$(id -u)
-  #         export RUNNER_GID=$(id -g)
+      - name: Setup environment
+        run: |
+          docker version
+          docker compose version
+          export RUNNER_UID=$(id -u)
+          export RUNNER_GID=$(id -g)
 
-  #     - name: Deploy application
-  #       run: |
-  #         docker compose down --remove-orphans
-  #         docker compose up -d
+      - name: Deploy application
+        run: |
+          docker compose down --remove-orphans
+          docker compose up -d
 
-  #     - name: Cleanup Docker images
-  #       run: |
-  #         docker image prune -f || true
+      - name: Cleanup Docker images
+        run: |
+          docker image prune -f || true
 
  
