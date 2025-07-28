@@ -35,108 +35,108 @@ jobs:
   #       run: docker compose build
 
   # Core functionality test - always runs
-  # core-functionality-test:
-  #   runs-on: [self-hosted, docker-linux]
-  #   container:
-  #     image: mcr.microsoft.com/playwright:v1.54.0-noble
-  #     options: --user root
-  #   env:
-  #     CI: "true"
-  #     npm_config_cache: "${{ github.workspace }}/.npm"
-  #     PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
-  #   steps:
-  #     - name: Clean workspace
-  #       run: |
-  #         echo "Cleaning workspace quickly..."
-  #         # Remove git locks and problematic directories
-  #         rm -rf ${{ github.workspace }}/.git/index.lock || true
-  #         rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
-  #         rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
-  #         rm -rf ${{ github.workspace }}/.vscode || true
-  #         # Clean npm cache directories with permission fixes
-  #         echo "Cleaning npm cache directories..."
-  #         chown -R root:root ${{ github.workspace }}/.npm 2>/dev/null || true
-  #         chmod -R 755 ${{ github.workspace }}/.npm 2>/dev/null || true
-  #         rm -rf ${{ github.workspace }}/.npm 2>/dev/null || true
-  #         # Clean other npm-related directories
-  #         find ${{ github.workspace }} -name "node_modules" -type d -exec rm -rf {} + 2>/dev/null || true
-  #         find ${{ github.workspace }} -name ".npm" -type d -exec rm -rf {} + 2>/dev/null || true
-  #         # Fix permissions for directories
-  #         chmod -R 755 ${{ github.workspace }}/.git || true
-  #         chmod -R 755 ${{ github.workspace }} || true
+  core-functionality-test:
+    runs-on: [self-hosted, docker-linux]
+    container:
+      image: mcr.microsoft.com/playwright:v1.54.0-noble
+      options: --user root
+    env:
+      CI: "true"
+      npm_config_cache: "${{ github.workspace }}/.npm"
+      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+    steps:
+      - name: Clean workspace
+        run: |
+          echo "Cleaning workspace quickly..."
+          # Remove git locks and problematic directories
+          rm -rf ${{ github.workspace }}/.git/index.lock || true
+          rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+          rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
+          rm -rf ${{ github.workspace }}/.vscode || true
+          # Clean npm cache directories with permission fixes
+          echo "Cleaning npm cache directories..."
+          chown -R root:root ${{ github.workspace }}/.npm 2>/dev/null || true
+          chmod -R 755 ${{ github.workspace }}/.npm 2>/dev/null || true
+          rm -rf ${{ github.workspace }}/.npm 2>/dev/null || true
+          # Clean other npm-related directories
+          find ${{ github.workspace }} -name "node_modules" -type d -exec rm -rf {} + 2>/dev/null || true
+          find ${{ github.workspace }} -name ".npm" -type d -exec rm -rf {} + 2>/dev/null || true
+          # Fix permissions for directories
+          chmod -R 755 ${{ github.workspace }}/.git || true
+          chmod -R 755 ${{ github.workspace }} || true
       
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #       with:
-  #         clean: true
-  #         fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 0
 
-  #     - name: Cache dependencies
-  #       uses: actions/cache@v4
-  #       with:
-  #         path: |
-  #           .npm/
-  #           e2e-tests/node_modules/
-  #           frontend/image-tool/node_modules/
-  #           frontend/pc-tool/node_modules/
-  #         key: ${{ runner.os }}-core-test-${{ hashFiles('**/package-lock.json') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-core-test-
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm/
+            e2e-tests/node_modules/
+            frontend/image-tool/node_modules/
+            frontend/pc-tool/node_modules/
+          key: ${{ runner.os }}-core-test-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-core-test-
 
-  #     - name: Setup Playwright environment
-  #       run: |
-  #         echo "=== 使用Docker镜像预装浏览器 ==="
-  #         ls -la /ms-playwright/
-  #         cd e2e-tests
-  #         npm install
-  #         npx playwright --version
-  #         echo "创建符号链接让Playwright找到Docker镜像中的所有组件..."
-  #         mkdir -p node_modules/playwright-core/.local-browsers
-  #         ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
-  #         ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
-  #         echo "验证所有符号链接："
-  #         ls -la node_modules/playwright-core/.local-browsers/
-  #         echo "验证关键可执行文件："
-  #         ls -la node_modules/playwright-core/.local-browsers/chromium_headless_shell-1181/ | head -5
-  #         ls -la node_modules/playwright-core/.local-browsers/ffmpeg-1011/ | head -5
-  #         echo "=== 设置完成 ==="
+      - name: Setup Playwright environment
+        run: |
+          echo "=== 使用Docker镜像预装浏览器 ==="
+          ls -la /ms-playwright/
+          cd e2e-tests
+          npm install
+          npx playwright --version
+          echo "创建符号链接让Playwright找到Docker镜像中的所有组件..."
+          mkdir -p node_modules/playwright-core/.local-browsers
+          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+          echo "验证所有符号链接："
+          ls -la node_modules/playwright-core/.local-browsers/
+          echo "验证关键可执行文件："
+          ls -la node_modules/playwright-core/.local-browsers/chromium_headless_shell-1181/ | head -5
+          ls -la node_modules/playwright-core/.local-browsers/ffmpeg-1011/ | head -5
+          echo "=== 设置完成 ==="
 
-  #     - name: Install frontend dependencies
-  #       run: |
-  #         cd frontend/image-tool
-  #         npm ci
-  #         cd ../pc-tool
-  #         npm ci
+      - name: Install frontend dependencies
+        run: |
+          cd frontend/image-tool
+          npm ci
+          cd ../pc-tool
+          npm ci
 
-  #     - name: Run core functionality tests
-  #       run: |
-  #         cd e2e-tests
-  #         chmod +x run-tests.sh
-  #         ./run-tests.sh core --ci 2>&1 | tee core-test-output.log
+      - name: Run core functionality tests
+        run: |
+          cd e2e-tests
+          chmod +x run-tests.sh
+          ./run-tests.sh core --ci 2>&1 | tee core-test-output.log
 
-  #     - name: Upload test results
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: core-test-results
-  #         path: |
-  #           e2e-tests/test-results/
-  #           e2e-tests/html-report/
-  #           e2e-tests/playwright-report/
-  #         retention-days: 3
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core-test-results
+          path: |
+            e2e-tests/test-results/
+            e2e-tests/html-report/
+            e2e-tests/playwright-report/
+          retention-days: 3
 
-  #     - name: Extract error and send Slack message
-  #       if: failure()
-  #       env:
-  #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-  #       run: |
-  #         ERR=$(tail -n 20 core-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
-  #         curl -X POST -H 'Content-type: application/json' \
-  #           --data "{\"text\":\"❌ *Core Functionality Tests Failed*\nError: $ERR\"}" \
-  #           $SLACK_WEBHOOK_URL
+      - name: Extract error and send Slack message
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          ERR=$(tail -n 200 core-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"❌ *Core Functionality Tests Failed*\nError: $ERR\"}" \
+            $SLACK_WEBHOOK_URL
 
 
   # E2E tests
@@ -224,6 +224,16 @@ jobs:
             e2e-tests/html-report/
             e2e-tests/playwright-report/
           retention-days: 7
+
+      - name: Extract error and send Slack message
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          ERR=$(tail -n 200 core-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"❌ *Core Functionality Tests Failed*\nError: $ERR\"}" \
+            $SLACK_WEBHOOK_URL
 
   # Frontend linting
   # frontend-lint:
