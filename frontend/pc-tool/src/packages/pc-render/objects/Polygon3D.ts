@@ -353,43 +353,63 @@ export default class Polygon3D extends THREE.Group {
      * Manual polygon raycast as fallback
      */
     private raycastPolygon(raycaster: THREE.Raycaster, intersects: THREE.Intersection[]): void {
-        const matrixWorld = this.matrixWorld;
-        
-        // Try to get camera from raycaster userData (if available)
-        const camera = (raycaster as any).camera;
-        const threshold = camera ? 
-            getAdaptiveLineSelectionThreshold(raycaster, camera, this, SELECTION_CONFIG.THRESHOLDS.POLYGON_MULTIPLIER) :
-            getLineSelectionThreshold(raycaster, SELECTION_CONFIG.THRESHOLDS.POLYGON_MULTIPLIER);
-
-        // Transform ray to local space
-        const _inverseMatrix = new THREE.Matrix4().copy(matrixWorld).invert();
-        const _ray = raycaster.ray.clone().applyMatrix4(_inverseMatrix);
-
-        // First check intersection with polygon edges
-        let minDistance = Infinity;
-        let closestIntersection: { point: THREE.Vector3; distance: number } | null = null;
-
-        for (let i = 0; i < this.points.length; i++) {
-            const start = this.points[i];
-            const end = this.points[(i + 1) % this.points.length];
+        try {
+            const matrixWorld = this.matrixWorld;
             
-            const intersection = raycastLineSegment(_ray, start, end, threshold);
-            if (intersection && intersection.distance < minDistance) {
-                minDistance = intersection.distance;
-                closestIntersection = intersection;
-            }
-        }
+            // Try to get camera from raycaster userData (if available)
+            const camera = (raycaster as any).camera;
+            const threshold = camera ? 
+                getAdaptiveLineSelectionThreshold(raycaster, camera, this, SELECTION_CONFIG.THRESHOLDS.POLYGON_MULTIPLIER) :
+                getLineSelectionThreshold(raycaster, SELECTION_CONFIG.THRESHOLDS.POLYGON_MULTIPLIER);
 
-        // Also check if ray intersects with polygon interior (plane intersection)
-        if (!closestIntersection && this.points.length >= 3) {
-            const planeIntersection = this.checkPlaneIntersection(_ray);
-            if (planeIntersection && planeIntersection.distance < minDistance) {
-                closestIntersection = planeIntersection;
-            }
-        }
+            // Transform ray to local space
+            const _inverseMatrix = new THREE.Matrix4().copy(matrixWorld).invert();
+            const _ray = raycaster.ray.clone().applyMatrix4(_inverseMatrix);
 
-        if (closestIntersection) {
-            addIntersectionResult(intersects, this, closestIntersection.point, matrixWorld, raycaster);
+            // First check intersection with polygon edges
+            let minDistance = Infinity;
+            let closestIntersection: { point: THREE.Vector3; distance: number } | null = null;
+
+            // 检查所有边缘
+            for (let i = 0; i < this.points.length; i++) {
+                const start = this.points[i];
+                const end = this.points[(i + 1) % this.points.length];
+                
+                const intersection = raycastLineSegment(_ray, start, end, threshold);
+                if (intersection && intersection.distance < minDistance) {
+                    minDistance = intersection.distance;
+                    closestIntersection = intersection;
+                }
+            }
+
+            // Also check if ray intersects with polygon interior (plane intersection)
+            if (!closestIntersection && this.points.length >= 3) {
+                const planeIntersection = this.checkPlaneIntersection(_ray);
+                if (planeIntersection && planeIntersection.distance < minDistance) {
+                    closestIntersection = planeIntersection;
+                }
+            }
+
+            // 即使没有找到精确交点，也尝试使用更大的阈值
+            if (!closestIntersection) {
+                const largerThreshold = threshold * 3; // 使用3倍阈值
+                for (let i = 0; i < this.points.length; i++) {
+                    const start = this.points[i];
+                    const end = this.points[(i + 1) % this.points.length];
+                    
+                    const intersection = raycastLineSegment(_ray, start, end, largerThreshold);
+                    if (intersection && intersection.distance < minDistance) {
+                        minDistance = intersection.distance;
+                        closestIntersection = intersection;
+                    }
+                }
+            }
+
+            if (closestIntersection) {
+                addIntersectionResult(intersects, this, closestIntersection.point, matrixWorld, raycaster);
+            }
+        } catch (error) {
+            console.warn('Error in polygon raycast:', error);
         }
     }
 

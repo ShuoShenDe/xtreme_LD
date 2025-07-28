@@ -136,40 +136,70 @@ export default class Polyline3D extends THREE.Line {
         const raycastSetup = setupCommonRaycast(this, raycaster);
         if (!raycastSetup) return;
 
-        // Use a larger threshold for better selection
-        // Try to get camera from raycaster userData (if available)
-        const camera = (raycaster as any).camera;
-        const threshold = camera ? 
-            getAdaptiveLineSelectionThreshold(raycaster, camera, this, SELECTION_CONFIG.THRESHOLDS.POLYLINE_MULTIPLIER) :
-            getLineSelectionThreshold(raycaster, SELECTION_CONFIG.THRESHOLDS.POLYLINE_MULTIPLIER);
-        let minDistance = Infinity;
-        let closestIntersection: { point: THREE.Vector3; distance: number } | null = null;
+        try {
+            // Use a larger threshold for better selection
+            // Try to get camera from raycaster userData (if available)
+            const camera = (raycaster as any).camera;
+            const threshold = camera ? 
+                getAdaptiveLineSelectionThreshold(raycaster, camera, this, SELECTION_CONFIG.THRESHOLDS.POLYLINE_MULTIPLIER) :
+                getLineSelectionThreshold(raycaster, SELECTION_CONFIG.THRESHOLDS.POLYLINE_MULTIPLIER);
+            let minDistance = Infinity;
+            let closestIntersection: { point: THREE.Vector3; distance: number } | null = null;
 
-        // Check all line segments directly without creating temporary arrays
-        for (let i = 0; i < this._points.length - 1; i++) {
-            const intersection = raycastLineSegment(raycastSetup.ray, this._points[i], this._points[i + 1], threshold);
-            if (intersection && intersection.distance < minDistance) {
-                minDistance = intersection.distance;
-                closestIntersection = intersection;
+            // Check all line segments directly without creating temporary arrays
+            for (let i = 0; i < this._points.length - 1; i++) {
+                const intersection = raycastLineSegment(raycastSetup.ray, this._points[i], this._points[i + 1], threshold);
+                if (intersection && intersection.distance < minDistance) {
+                    minDistance = intersection.distance;
+                    closestIntersection = intersection;
+                }
             }
-        }
-        
-        // Add closing segment if closed
-        if (this._closed && this._points.length > 2) {
-            const intersection = raycastLineSegment(
-                raycastSetup.ray, 
-                this._points[this._points.length - 1], 
-                this._points[0], 
-                threshold
-            );
-            if (intersection && intersection.distance < minDistance) {
-                minDistance = intersection.distance;
-                closestIntersection = intersection;
+            
+            // Add closing segment if closed
+            if (this._closed && this._points.length > 2) {
+                const intersection = raycastLineSegment(
+                    raycastSetup.ray, 
+                    this._points[this._points.length - 1], 
+                    this._points[0], 
+                    threshold
+                );
+                if (intersection && intersection.distance < minDistance) {
+                    minDistance = intersection.distance;
+                    closestIntersection = intersection;
+                }
             }
-        }
 
-        if (closestIntersection) {
-            addIntersectionResult(intersects, this, closestIntersection.point, raycastSetup.matrixWorld, raycaster);
+            // 如果没有找到交点，尝试使用更大的阈值
+            if (!closestIntersection) {
+                const largerThreshold = threshold * 3; // 使用3倍阈值
+                
+                for (let i = 0; i < this._points.length - 1; i++) {
+                    const intersection = raycastLineSegment(raycastSetup.ray, this._points[i], this._points[i + 1], largerThreshold);
+                    if (intersection && intersection.distance < minDistance) {
+                        minDistance = intersection.distance;
+                        closestIntersection = intersection;
+                    }
+                }
+                
+                if (this._closed && this._points.length > 2) {
+                    const intersection = raycastLineSegment(
+                        raycastSetup.ray, 
+                        this._points[this._points.length - 1], 
+                        this._points[0], 
+                        largerThreshold
+                    );
+                    if (intersection && intersection.distance < minDistance) {
+                        minDistance = intersection.distance;
+                        closestIntersection = intersection;
+                    }
+                }
+            }
+
+            if (closestIntersection) {
+                addIntersectionResult(intersects, this, closestIntersection.point, raycastSetup.matrixWorld, raycaster);
+            }
+        } catch (error) {
+            console.warn('Error in polyline raycast:', error);
         }
     }
 

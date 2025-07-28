@@ -172,13 +172,18 @@ export default class SelectAction extends Action {
         const selected = candidates[0];
         
         // 调试信息
-        if (window.location.hostname === 'localhost') {
+        if (window.location.hostname === 'localhost' || process.env.NODE_ENV === 'development') {
             console.log('Screen projection selection:', {
                 mousePos: mousePoint,
                 selectedObject: selected.object.constructor.name,
                 distance: selected.distance,
                 priority: selected.priority,
-                totalCandidates: candidates.length
+                totalCandidates: candidates.length,
+                allCandidates: candidates.map(c => ({
+                    type: c.object.constructor.name,
+                    distance: c.distance,
+                    priority: c.priority
+                }))
             });
         }
         
@@ -219,44 +224,58 @@ export default class SelectAction extends Action {
     } | null {
         if (!polygon.points || polygon.points.length < 3) return null;
         
-        // 将多边形顶点投影到屏幕空间
-        const screenPoints: THREE.Vector2[] = [];
-        let totalDepth = 0;
-        
-        for (const point of polygon.points) {
-            const worldPoint = point.clone().applyMatrix4(polygon.matrixWorld);
-            const screenPoint = worldPoint.clone().project(camera);
+        try {
+            // 确保世界矩阵是最新的
+            polygon.updateMatrixWorld(true);
             
-            // 转换到屏幕坐标
-            screenPoint.x = (screenPoint.x + 1) * this.renderView.width / 2;
-            screenPoint.y = (-screenPoint.y + 1) * this.renderView.height / 2;
+            // 将多边形顶点投影到屏幕空间
+            const screenPoints: THREE.Vector2[] = [];
+            let totalDepth = 0;
+            let validPoints = 0;
             
-            screenPoints.push(new THREE.Vector2(screenPoint.x, screenPoint.y));
-            totalDepth += screenPoint.z;
-        }
-        
-        // 检查鼠标点是否在多边形内
-        if (this.isPointInPolygon2D(mousePoint, screenPoints)) {
-            const avgDepth = totalDepth / polygon.points.length;
-            const distance = Math.abs(avgDepth); // 使用平均深度作为距离
+            for (const point of polygon.points) {
+                const worldPoint = point.clone().applyMatrix4(polygon.matrixWorld);
+                const screenPoint = worldPoint.clone().project(camera);
+                
+                // 检查投影是否有效（在视锥内）
+                if (Math.abs(screenPoint.x) <= 1 && Math.abs(screenPoint.y) <= 1 && screenPoint.z > 0 && screenPoint.z < 1) {
+                    // 转换到屏幕坐标
+                    screenPoint.x = (screenPoint.x + 1) * this.renderView.width / 2;
+                    screenPoint.y = (-screenPoint.y + 1) * this.renderView.height / 2;
+                    
+                    screenPoints.push(new THREE.Vector2(screenPoint.x, screenPoint.y));
+                    totalDepth += screenPoint.z;
+                    validPoints++;
+                }
+            }
             
-            return {
-                object: polygon,
-                distance: distance,
-                priority: 4 // Polygon优先级最高
-            };
-        }
-        
-        // 如果不在多边形内，检查是否靠近边缘
-        const edgeDistance = this.getDistanceToPolygonEdges2D(mousePoint, screenPoints);
-        if (edgeDistance < 10) { // 10像素容差
-            const avgDepth = totalDepth / polygon.points.length;
+            if (validPoints < 3) return null; // 需要至少3个有效点形成多边形
             
-            return {
-                object: polygon,
-                distance: Math.abs(avgDepth) + edgeDistance * 0.01, // 边缘选择距离稍微增加
-                priority: 3 // 边缘选择优先级稍低
-            };
+            // 检查鼠标点是否在多边形内
+            if (this.isPointInPolygon2D(mousePoint, screenPoints)) {
+                const avgDepth = totalDepth / validPoints;
+                const distance = Math.abs(avgDepth); // 使用平均深度作为距离
+                
+                return {
+                    object: polygon,
+                    distance: distance,
+                    priority: 4 // Polygon优先级最高
+                };
+            }
+            
+            // 如果不在多边形内，检查是否靠近边缘
+            const edgeDistance = this.getDistanceToPolygonEdges2D(mousePoint, screenPoints);
+            if (edgeDistance < 15) { // 增加容差到15像素
+                const avgDepth = totalDepth / validPoints;
+                
+                return {
+                    object: polygon,
+                    distance: Math.abs(avgDepth) + edgeDistance * 0.01, // 边缘选择距离稍微增加
+                    priority: 3 // 边缘选择优先级稍低
+                };
+            }
+        } catch (error) {
+            console.warn('Error in polygon screen projection:', error);
         }
         
         return null;
@@ -339,68 +358,92 @@ export default class SelectAction extends Action {
         distance: number;
         priority: number;
     } | null {
-        if (!polyline.points || polyline.points.length < 2) return null;
+        // 支持不同的points属性名
+        const points = polyline.points || polyline._points;
+        if (!points || points.length < 2) return null;
         
-        let minDistance = Infinity;
-        let closestDepth = Infinity;
-        
-        // 检查每个线段
-        for (let i = 0; i < polyline.points.length - 1; i++) {
-            const startWorld = polyline.points[i].clone().applyMatrix4(polyline.matrixWorld);
-            const endWorld = polyline.points[i + 1].clone().applyMatrix4(polyline.matrixWorld);
+        try {
+            // 确保世界矩阵是最新的
+            polyline.updateMatrixWorld(true);
             
-            const startScreen = startWorld.clone().project(camera);
-            const endScreen = endWorld.clone().project(camera);
+            let minDistance = Infinity;
+            let closestDepth = Infinity;
+            let validSegments = 0;
             
-            // 转换到屏幕坐标
-            startScreen.x = (startScreen.x + 1) * this.renderView.width / 2;
-            startScreen.y = (-startScreen.y + 1) * this.renderView.height / 2;
-            endScreen.x = (endScreen.x + 1) * this.renderView.width / 2;
-            endScreen.y = (-endScreen.y + 1) * this.renderView.height / 2;
-            
-            const startScreen2D = new THREE.Vector2(startScreen.x, startScreen.y);
-            const endScreen2D = new THREE.Vector2(endScreen.x, endScreen.y);
-            
-            const distance = this.getDistanceToLineSegment2D(mousePoint, startScreen2D, endScreen2D);
-            
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestDepth = Math.min(startScreen.z, endScreen.z);
+            // 检查每个线段
+            for (let i = 0; i < points.length - 1; i++) {
+                const startWorld = points[i].clone().applyMatrix4(polyline.matrixWorld);
+                const endWorld = points[i + 1].clone().applyMatrix4(polyline.matrixWorld);
+                
+                const startScreen = startWorld.clone().project(camera);
+                const endScreen = endWorld.clone().project(camera);
+                
+                // 检查点是否在视锥内
+                if (Math.abs(startScreen.z) < 1 && Math.abs(endScreen.z) < 1 && 
+                    startScreen.z > 0 && endScreen.z > 0) {
+                    
+                    // 转换到屏幕坐标
+                    startScreen.x = (startScreen.x + 1) * this.renderView.width / 2;
+                    startScreen.y = (-startScreen.y + 1) * this.renderView.height / 2;
+                    endScreen.x = (endScreen.x + 1) * this.renderView.width / 2;
+                    endScreen.y = (-endScreen.y + 1) * this.renderView.height / 2;
+                    
+                    const startScreen2D = new THREE.Vector2(startScreen.x, startScreen.y);
+                    const endScreen2D = new THREE.Vector2(endScreen.x, endScreen.y);
+                    
+                    const distance = this.getDistanceToLineSegment2D(mousePoint, startScreen2D, endScreen2D);
+                    
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestDepth = Math.min(startScreen.z, endScreen.z);
+                    }
+                    validSegments++;
+                }
             }
-        }
-        
-        // 检查闭合线段（如果是闭合的）
-        if (polyline._closed && polyline.points.length > 2) {
-            const startWorld = polyline.points[polyline.points.length - 1].clone().applyMatrix4(polyline.matrixWorld);
-            const endWorld = polyline.points[0].clone().applyMatrix4(polyline.matrixWorld);
             
-            const startScreen = startWorld.clone().project(camera);
-            const endScreen = endWorld.clone().project(camera);
-            
-            startScreen.x = (startScreen.x + 1) * this.renderView.width / 2;
-            startScreen.y = (-startScreen.y + 1) * this.renderView.height / 2;
-            endScreen.x = (endScreen.x + 1) * this.renderView.width / 2;
-            endScreen.y = (-endScreen.y + 1) * this.renderView.height / 2;
-            
-            const startScreen2D = new THREE.Vector2(startScreen.x, startScreen.y);
-            const endScreen2D = new THREE.Vector2(endScreen.x, endScreen.y);
-            
-            const distance = this.getDistanceToLineSegment2D(mousePoint, startScreen2D, endScreen2D);
-            
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestDepth = Math.min(startScreen.z, endScreen.z);
+            // 检查闭合线段（如果是闭合的）
+            if (polyline._closed && points.length > 2) {
+                const startWorld = points[points.length - 1].clone().applyMatrix4(polyline.matrixWorld);
+                const endWorld = points[0].clone().applyMatrix4(polyline.matrixWorld);
+                
+                const startScreen = startWorld.clone().project(camera);
+                const endScreen = endWorld.clone().project(camera);
+                
+                // 检查点是否在视锥内
+                if (Math.abs(startScreen.z) < 1 && Math.abs(endScreen.z) < 1 && 
+                    startScreen.z > 0 && endScreen.z > 0) {
+                    
+                    startScreen.x = (startScreen.x + 1) * this.renderView.width / 2;
+                    startScreen.y = (-startScreen.y + 1) * this.renderView.height / 2;
+                    endScreen.x = (endScreen.x + 1) * this.renderView.width / 2;
+                    endScreen.y = (-endScreen.y + 1) * this.renderView.height / 2;
+                    
+                    const startScreen2D = new THREE.Vector2(startScreen.x, startScreen.y);
+                    const endScreen2D = new THREE.Vector2(endScreen.x, endScreen.y);
+                    
+                    const distance = this.getDistanceToLineSegment2D(mousePoint, startScreen2D, endScreen2D);
+                    
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestDepth = Math.min(startScreen.z, endScreen.z);
+                    }
+                    validSegments++;
+                }
             }
-        }
-        
-        // 如果距离小于阈值，认为选中
-        const threshold = 8; // 8像素容差
-        if (minDistance < threshold) {
-            return {
-                object: polyline,
-                distance: Math.abs(closestDepth) + minDistance * 0.01,
-                priority: 1 // Polyline优先级最低
-            };
+            
+            if (validSegments === 0) return null; // 没有有效线段
+            
+            // 如果距离小于阈值，认为选中
+            const threshold = 12; // 增加容差到12像素
+            if (minDistance < threshold) {
+                return {
+                    object: polyline,
+                    distance: Math.abs(closestDepth) + minDistance * 0.01,
+                    priority: 2 // Polyline优先级中等
+                };
+            }
+        } catch (error) {
+            console.warn('Error in polyline screen projection:', error);
         }
         
         return null;
