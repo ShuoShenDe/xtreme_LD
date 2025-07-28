@@ -25,11 +25,6 @@ jobs:
           sudo rm -rf ${{ github.workspace }}/.git/*.lock 2>/dev/null || true
           sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
         
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          clean: true
-          fetch-depth: 0
 
       - name: Check Docker and Docker Compose
         run: |
