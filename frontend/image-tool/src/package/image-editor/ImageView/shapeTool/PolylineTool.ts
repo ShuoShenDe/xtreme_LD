@@ -17,6 +17,9 @@ export default class PolylineTool extends ShapeTool {
   holderLastLine: Line;
   anchors: Konva.Group;
   currentAnchor: Anchor;
+  
+  // 新增：选中的锚点跟踪
+  selectedAnchor: Anchor | null = null;
 
   constructor(view: ImageView) {
     super(view);
@@ -228,7 +231,13 @@ export default class PolylineTool extends ShapeTool {
         pointIndex: index,
       });
       
+      // 添加点击事件来选中锚点
+      anchor.on('click', () => {
+        this.selectAnchor(anchor);
+      });
+      
       anchor.on('dragstart', () => {
+        this.selectAnchor(anchor);
         this.onEditStart();
       });
 
@@ -238,11 +247,24 @@ export default class PolylineTool extends ShapeTool {
         const objX = this.object!.x();
         const objY = this.object!.y();
         // 转换为相对坐标
-        currentPoints[index] = {
+        const newPoint = {
           x: anchorPos.x - objX,
           y: anchorPos.y - objY
         };
-        this.object!.setAttrs({ points: currentPoints });
+        
+        // 检查是否需要合并点
+        const mergeResult = this.checkPointMerge(index, newPoint, currentPoints);
+        if (mergeResult.shouldMerge) {
+          // 合并点：移除当前点并更新点数组
+          currentPoints.splice(index, 1);
+          this.object!.setAttrs({ points: currentPoints });
+          this.updateEditObject(); // 重新创建锚点
+        } else {
+          // 正常更新点位置
+          currentPoints[index] = newPoint;
+          this.object!.setAttrs({ points: currentPoints });
+        }
+        
         this.view.draw();
         this.onEditChange();
       });
@@ -271,6 +293,103 @@ export default class PolylineTool extends ShapeTool {
     // 检查editGroup中是否有锚点正在被拖拽
     const anchors = this.editGroup.children?.filter(child => child instanceof Anchor) || [];
     return anchors.some((anchor: any) => anchor.isDragging && anchor.isDragging());
+  }
+
+  // 新增：选中锚点
+  selectAnchor(anchor: Anchor | null) {
+    // 清除之前选中锚点的高亮
+    if (this.selectedAnchor) {
+      this.selectedAnchor.setAttrs({
+        stroke: '#ffffff',
+        strokeWidth: 2,
+        fill: '#1890ff'
+      });
+    }
+    
+    this.selectedAnchor = anchor;
+    
+    // 高亮当前选中的锚点
+    if (this.selectedAnchor) {
+      this.selectedAnchor.setAttrs({
+        stroke: '#ff4d4f',
+        strokeWidth: 3,
+        fill: '#ff7875'
+      });
+    }
+    
+    this.view.draw();
+  }
+
+  // 新增：检查点合并
+  checkPointMerge(currentIndex: number, newPoint: Vector2, points: Vector2[]): { shouldMerge: boolean; mergeIndex?: number } {
+    const MERGE_THRESHOLD = 10; // 合并阈值（像素）
+    
+    // 检查与前一个点的距离
+    if (currentIndex > 0) {
+      const prevPoint = points[currentIndex - 1];
+      const distance = Math.sqrt(
+        Math.pow(newPoint.x - prevPoint.x, 2) + Math.pow(newPoint.y - prevPoint.y, 2)
+      );
+      if (distance < MERGE_THRESHOLD) {
+        return { shouldMerge: true, mergeIndex: currentIndex - 1 };
+      }
+    }
+    
+    // 检查与后一个点的距离
+    if (currentIndex < points.length - 1) {
+      const nextPoint = points[currentIndex + 1];
+      const distance = Math.sqrt(
+        Math.pow(newPoint.x - nextPoint.x, 2) + Math.pow(newPoint.y - nextPoint.y, 2)
+      );
+      if (distance < MERGE_THRESHOLD) {
+        return { shouldMerge: true, mergeIndex: currentIndex + 1 };
+      }
+    }
+    
+    return { shouldMerge: false };
+  }
+
+  // 新增：删除选中的点
+  deleteSelectedPoint(): boolean {
+    if (!this.selectedAnchor || !this.object) return false;
+    
+    const points = [...(this.object.attrs.points || [])];
+    const pointIndex = this.selectedAnchor.anchorIndex;
+    
+    // 确保至少保留最小点数
+    if (points.length <= this._minPointNum) {
+      console.warn(`Cannot delete point: minimum ${this._minPointNum} points required`);
+      return false;
+    }
+    
+    // 删除点
+    points.splice(pointIndex, 1);
+    
+    // 更新对象
+    this.object.setAttrs({ points });
+    
+    // 清除选中状态
+    this.selectedAnchor = null;
+    
+    // 重新创建锚点
+    this.updateEditObject();
+    
+    this.view.draw();
+    this.onEditChange();
+    
+    return true;
+  }
+
+  // 新增：支持编辑模式下的删除操作
+  checkEditAction(action: ToolAction): boolean {
+    return action === ToolAction.del && this.selectedAnchor !== null;
+  }
+
+  // 新增：处理删除操作
+  onToolDelete(): void {
+    if (this.selectedAnchor) {
+      this.deleteSelectedPoint();
+    }
   }
 
   private calculatePerimeter(): number {
