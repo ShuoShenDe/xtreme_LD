@@ -6,13 +6,13 @@ import { getPointsSelectionThreshold } from '../utils/raycast';
 
 let defaultMaterial = new THREE.PointsMaterial({
     color: 0xffffff,
-    size: 2,
+    size: 1,
     sizeAttenuation: true,
 });
 
 let highlightMaterial = new THREE.PointsMaterial({
     color: 0xff6600,
-    size: 3,
+    size: 1.5,
     sizeAttenuation: true,
 });
 
