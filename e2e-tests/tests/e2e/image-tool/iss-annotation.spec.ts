@@ -1,10 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { ImageToolPage } from '../../pages/image-tool/image-tool-page';
 
 test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => {
   let imageToolPage: ImageToolPage;
 
-  test.beforeEach(async ({ page }: { page: any }) => {
+  test.beforeEach(async ({ page }: { page: Page }) => {
     imageToolPage = new ImageToolPage(page);
     
     // 导航到测试页面 - 使用和成功测试完全相同的设置
@@ -26,7 +26,7 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
     await imageToolPage.selectIssTool();
     
     // 验证工具是否被正确选择
-    const activeToolExists = await imageToolPage.page.locator('.tool-item.active, [class*="active"]').count();
+    const activeToolExists = await imageToolPage.getPageLocator('.tool-item.active, [class*="active"]').count();
     expect(activeToolExists).toBeGreaterThan(0);
     
     console.log('ISS tool activation verified');
@@ -37,6 +37,11 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
     const clickPoint = { x: 0.5, y: 0.5 }; // 图像中心点
 
     console.log('Creating basic ISS segmentation...');
+    
+    // 添加调试信息
+    const initialState = await imageToolPage.debugEditorState();
+    console.log('Initial editor state:', initialState);
+    
     await imageToolPage.drawIssSegmentation([clickPoint]);
 
     // 验证ISS标注是否创建成功
@@ -44,6 +49,12 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
     
     // 检查标注数量
     const annotationCount = await imageToolPage.getAnnotationCount();
+    
+    // 添加更多调试信息
+    const finalState = await imageToolPage.debugEditorState();
+    console.log('Final editor state:', finalState);
+    console.log(`Annotation count: ${annotationCount}`);
+    
     expect(annotationCount).toBeGreaterThan(0);
     
     console.log(`Successfully created ISS segmentation. Total annotations: ${annotationCount}`);
@@ -73,7 +84,7 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
     const smallObjectPoint = { x: 0.2, y: 0.2 };
     await imageToolPage.drawIssSegmentation([smallObjectPoint]);
     
-    await imageToolPage.page.waitForTimeout(1000);
+    await imageToolPage.waitForTimeout(1000);
     
     // 大对象分割
     console.log('Testing ISS for large object...');
@@ -121,7 +132,7 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
 
     for (const point of boundaryPoints) {
       await imageToolPage.drawIssSegmentation([point]);
-      await imageToolPage.page.waitForTimeout(1000);
+      await imageToolPage.waitForTimeout(1000);
     }
 
     await imageToolPage.verifyIssAnnotation();
@@ -137,7 +148,7 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
     const initialPoint = { x: 0.5, y: 0.5 };
     await imageToolPage.drawIssSegmentation([initialPoint]);
     
-    await imageToolPage.page.waitForTimeout(1000);
+    await imageToolPage.waitForTimeout(1000);
     
     // 模拟精细化点击（正点击和负点击通常通过修饰键区分）
     const refinementPoints = [
@@ -153,10 +164,10 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
         const absoluteY = bounds.y + bounds.height * point.y;
         
         // 使用Shift键模拟负点击（从分割中移除）
-        await imageToolPage.page.keyboard.down('Shift');
-        await imageToolPage.page.mouse.click(absoluteX, absoluteY);
-        await imageToolPage.page.keyboard.up('Shift');
-        await imageToolPage.page.waitForTimeout(500);
+        await imageToolPage.keyboardDown('Shift');
+        await imageToolPage.clickMouse(absoluteX, absoluteY);
+        await imageToolPage.keyboardUp('Shift');
+        await imageToolPage.waitForTimeout(500);
       }
     }
 
@@ -170,16 +181,16 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
     console.log('Testing ISS keyboard shortcuts...');
     
     // 使用快捷键激活ISS工具
-    await imageToolPage.page.keyboard.press('i'); // ISS工具快捷键
-    await imageToolPage.page.waitForTimeout(500);
+    await imageToolPage.pressKeyboard('i'); // ISS工具快捷键
+    await imageToolPage.waitForTimeout(500);
     
     // 创建分割
     const clickPoint = { x: 0.5, y: 0.5 };
     await imageToolPage.drawIssSegmentation([clickPoint]);
     
     // 测试完成快捷键（通常是Enter或Escape）
-    await imageToolPage.page.keyboard.press('Enter');
-    await imageToolPage.page.waitForTimeout(500);
+    await imageToolPage.pressKeyboard('Enter');
+    await imageToolPage.waitForTimeout(500);
 
     await imageToolPage.verifyIssAnnotation();
     
@@ -197,12 +208,12 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
     const initialCount = await imageToolPage.getAnnotationCount();
     
     // 执行撤销操作
-    await imageToolPage.page.keyboard.press('Control+z');
-    await imageToolPage.page.waitForTimeout(500);
+    await imageToolPage.pressKeyboard('Control+z');
+    await imageToolPage.waitForTimeout(500);
     
     // 执行重做操作
-    await imageToolPage.page.keyboard.press('Control+y');
-    await imageToolPage.page.waitForTimeout(500);
+    await imageToolPage.pressKeyboard('Control+y');
+    await imageToolPage.waitForTimeout(500);
     
     // 验证操作后的状态
     const finalCount = await imageToolPage.getAnnotationCount();
@@ -219,14 +230,14 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
     await imageToolPage.drawIssSegmentation([clickPoint]);
     
     // 验证是否有分割结果
-    const hasSegmentation = await imageToolPage.page.evaluate(() => {
+    const hasSegmentation = await imageToolPage.evaluatePage(() => {
       // 检查是否有ISS分割结果相关的DOM元素
       const issElements = document.querySelectorAll('[data-type*="iss"], [class*="iss"], [class*="segmentation"]');
       return issElements.length > 0;
     });
     
     // 验证canvas上是否有视觉变化
-    const hasCanvasContent = await imageToolPage.page.evaluate(() => {
+    const hasCanvasContent = await imageToolPage.evaluatePage(() => {
       const canvas = document.querySelector('canvas') as HTMLCanvasElement;
       if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -253,7 +264,7 @@ test.describe('2D ISS (Instance Semantic Segmentation) Annotation Tests', () => 
     console.log('ISS segmentation quality validation completed');
   });
 
-  test.afterEach(async ({ page }) => {
+  test.afterEach(async ({ page }: { page: Page }) => {
     // 清理操作
     console.log('ISS test completed, cleaning up...');
     await page.waitForTimeout(500);
