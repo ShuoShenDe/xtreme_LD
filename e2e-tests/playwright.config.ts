@@ -9,8 +9,8 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  /* Retry on CI only - GitHub Actions needs more retries */
+  retries: process.env.GITHUB_ACTIONS ? 3 : (process.env.CI ? 2 : 0),
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -39,9 +39,9 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         // 使用简化的基础URL，Mock环境会处理认证和数据
         baseURL: 'http://localhost:3300',
-        // 增加超时时间以等待Mock环境初始化
-        timeout: 30000,
-        navigationTimeout: 30000,
+        // GitHub Actions 需要更长的超时时间
+        timeout: process.env.GITHUB_ACTIONS ? 60000 : 30000,
+        navigationTimeout: process.env.GITHUB_ACTIONS ? 60000 : 30000,
       },
       testDir: './tests/e2e/image-tool',
     },
@@ -49,18 +49,19 @@ export default defineConfig({
       name: 'pc-tool',
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: 'http://localhost:3200',
-        timeout: 30000,
-        navigationTimeout: 30000,
+        baseURL: 'http://localhost:3300',
+        // GitHub Actions 需要更长的超时时间
+        timeout: process.env.GITHUB_ACTIONS ? 60000 : 30000,
+        navigationTimeout: process.env.GITHUB_ACTIONS ? 60000 : 30000,
       },
       testDir: './tests/e2e/pc-tool',
     },
   ],
 
-  /* Global test timeout */
-  timeout: 60000,
+  /* Global test timeout - GitHub Actions needs longer timeout */
+  timeout: process.env.GITHUB_ACTIONS ? 120000 : 60000,
 
-  /* Run your local dev server before starting the tests */
+  /* Configure the development server on CI. */
   // webServer: {
   //   command: 'npm run start',
   //   url: 'http://127.0.0.1:3000',

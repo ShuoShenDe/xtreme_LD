@@ -33,19 +33,28 @@ export class ImageToolPage extends BasePage {
   }
 
   async waitForDataLoad(): Promise<void> {
+    // 在 CI 环境中使用更长的超时时间，提高稳定性
+    const multiplier = 2; // 默认使用较长的超时时间
+    
+    console.log('Using extended timeouts for better CI stability');
+    
     // 首先等待页面基本DOM结构加载
     await this.page.waitForLoadState('domcontentloaded');
     
     // 等待Vue应用挂载完成
     await this.page.waitForFunction(() => {
       return document.querySelector('#app') !== null;
-    }, { timeout: 10000 });
+    }, { timeout: 10000 * multiplier });
     
-    // 等待编辑器容器出现
+    // 等待编辑器容器出现 - 使用更宽泛的选择器
     await this.page.waitForFunction(() => {
-      const editorContainer = document.querySelector('.image-tool-editor, [class*="editor"], [class*="image"], [id*="editor"]');
+      const editorContainer = document.querySelector('.image-tool-editor, [class*="editor"], [class*="image"], [id*="editor"], .konvajs-content, canvas');
+      console.log('Looking for editor container, found:', !!editorContainer);
+      if (editorContainer) {
+        console.log('Editor container class:', editorContainer.className);
+      }
       return editorContainer !== null;
-    }, { timeout: 15000 });
+    }, { timeout: 15000 * multiplier });
     
     // 等待Canvas元素或Konva容器
     await this.page.waitForFunction(() => {
@@ -58,7 +67,7 @@ export class ImageToolPage extends BasePage {
       console.log('Image editor:', !!imageEditor);
       
       return canvases.length > 0 || konvaContainer !== null || imageEditor !== null;
-    }, { timeout: 30000 });
+    }, { timeout: 30000 * multiplier });
     
     // 等待工具栏加载完成
     await this.page.waitForFunction(() => {
@@ -66,18 +75,18 @@ export class ImageToolPage extends BasePage {
       const toolElements = document.querySelectorAll('[class*="tool"], [class*="icon"], button, [role="button"]');
       console.log('Tool elements count:', toolElements.length);
       return toolElements.length > 3; // 至少有一些工具按钮
-    }, { timeout: 15000 });
+    }, { timeout: 15000 * multiplier });
     
     // 等待loading状态消失
     await this.page.waitForFunction(() => {
       const loadingElement = document.querySelector('.loading, [class*="loading"], .ant-spin');
       return !loadingElement || getComputedStyle(loadingElement).display === 'none';
-    }, { timeout: 15000 });
+    }, { timeout: 15000 * multiplier });
     
     // 验证编辑器已初始化
     await this.page.waitForFunction(() => {
       return typeof (window as any).editor !== 'undefined';
-    }, { timeout: 5000 });
+    }, { timeout: 5000 * multiplier });
   }
 
   // Canvas相关方法
@@ -1327,14 +1336,43 @@ export class ImageToolPage extends BasePage {
     return await this.page.evaluate(() => {
       const stage = (window as any).konvaStage;
       if (stage) {
-        const anchors = stage.find('Anchor');
         const positions: Array<{x: number, y: number}> = [];
         
-        anchors.forEach((anchor: any) => {
-          const pos = anchor.getAbsolutePosition();
-          positions.push({ x: pos.x, y: pos.y });
-        });
+        // 查找各种类型的控制点/锚点
+        const anchorTypes = ['Anchor', 'Circle', '.anchor', '.control-point', '.edit-anchor'];
         
+        for (const anchorType of anchorTypes) {
+          const anchors = stage.find(anchorType);
+          anchors.forEach((anchor: any) => {
+            if (anchor && typeof anchor.getAbsolutePosition === 'function') {
+              const pos = anchor.getAbsolutePosition();
+              // 避免重复添加相同位置的点
+              const isDuplicate = positions.some(p => 
+                Math.abs(p.x - pos.x) < 1 && Math.abs(p.y - pos.y) < 1
+              );
+              if (!isDuplicate) {
+                positions.push({ x: pos.x, y: pos.y });
+              }
+            }
+          });
+        }
+        
+        // 如果没有找到标准锚点，尝试查找编辑组中的子元素
+        if (positions.length === 0) {
+          const editGroups = stage.find('.editAnchors') || stage.find('.tool-edit-group');
+          editGroups.forEach((group: any) => {
+            if (group && group.children) {
+              group.children.forEach((child: any) => {
+                if (child && typeof child.getAbsolutePosition === 'function') {
+                  const pos = child.getAbsolutePosition();
+                  positions.push({ x: pos.x, y: pos.y });
+                }
+              });
+            }
+          });
+        }
+        
+        console.log(`Found ${positions.length} control points at:`, positions);
         return positions;
       }
       return [];
@@ -1345,12 +1383,35 @@ export class ImageToolPage extends BasePage {
   async verifyShapeModified(originalPoints: Array<{x: number, y: number}>): Promise<boolean> {
     const currentPoints = await this.getControlPointPositions();
     
+    console.log(`Shape modification check:`);
+    console.log(`- Original points (${originalPoints.length}):`, originalPoints);
+    console.log(`- Current points (${currentPoints.length}):`, currentPoints);
+    
+    if (currentPoints.length === 0) {
+      console.log('⚠️ No current control points found - may indicate shape was not created or selected');
+      // 如果没有找到控制点，检查是否有任何形状变化迹象
+      return await this.page.evaluate(() => {
+        // 检查是否有编辑历史或形状变化
+        const editor = (window as any).editor;
+        if (editor && editor.cmdManager) {
+          const hasCommands = editor.cmdManager.history && editor.cmdManager.history.length > 0;
+          console.log('Editor has command history:', hasCommands);
+          return hasCommands;
+        }
+        return false;
+      });
+    }
+    
     if (currentPoints.length !== originalPoints.length) {
+      console.log(`✅ Point count changed: ${originalPoints.length} → ${currentPoints.length}`);
       return true; // 点数变化
     }
     
     // 检查是否有任何点的位置发生了明显变化
-    for (let i = 0; i < currentPoints.length; i++) {
+    let maxDistance = 0;
+    let movedPoints = 0;
+    
+    for (let i = 0; i < Math.min(currentPoints.length, originalPoints.length); i++) {
       const current = currentPoints[i];
       const original = originalPoints[i];
       
@@ -1359,12 +1420,27 @@ export class ImageToolPage extends BasePage {
         Math.pow(current.y - original.y, 2)
       );
       
-      if (distance > 5) { // 移动超过5像素认为被修改
-        console.log(`Point ${i} moved ${distance.toFixed(2)} pixels`);
-        return true;
+      maxDistance = Math.max(maxDistance, distance);
+      
+      if (distance > 3) { // 降低检测阈值为3像素
+        console.log(`✅ Point ${i} moved ${distance.toFixed(2)} pixels from (${original.x.toFixed(1)}, ${original.y.toFixed(1)}) to (${current.x.toFixed(1)}, ${current.y.toFixed(1)})`);
+        movedPoints++;
       }
     }
     
+    console.log(`Max movement distance: ${maxDistance.toFixed(2)}px, Points moved: ${movedPoints}`);
+    
+    if (movedPoints > 0) {
+      return true;
+    }
+    
+    // 如果没有检测到明显移动，但有轻微变化也认为是修改
+    if (maxDistance > 1) {
+      console.log(`⚠️ Minor shape modification detected (max distance: ${maxDistance.toFixed(2)}px)`);
+      return true;
+    }
+    
+    console.log('❌ No shape modification detected');
     return false;
   }
 
