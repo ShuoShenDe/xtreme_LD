@@ -116,11 +116,9 @@ jobs:
   #         cd e2e-tests
   #         chmod +x run-tests.sh
   #         echo "=== 开始运行核心测试 ==="
-  #         # 运行测试并捕获输出和退出码
-  #         ./run-tests.sh core --ci > core-test-output.log 2>&1
-  #         TEST_EXIT_CODE=$?
-  #         # 显示日志内容
-  #         cat core-test-output.log
+  #         # 运行测试，实时显示输出并保存到文件
+  #         ./run-tests.sh core --ci 2>&1 | tee core-test-output.log
+  #         TEST_EXIT_CODE=${PIPESTATUS[0]}
   #         echo "=== 核心测试完成，退出码: $TEST_EXIT_CODE ==="
   #         # 如果测试失败，退出并传播错误
   #         if [ $TEST_EXIT_CODE -ne 0 ]; then
@@ -233,11 +231,9 @@ jobs:
           cd e2e-tests
           chmod +x run-tests.sh
           echo "=== 开始运行E2E测试 ==="
-          # 运行测试并捕获输出和退出码
-          ./run-tests.sh all --ci > e2e-test-output.log 2>&1
-          TEST_EXIT_CODE=$?
-          # 显示日志内容
-          cat e2e-test-output.log
+          # 运行测试，实时显示输出并保存到文件
+          ./run-tests.sh all --ci 2>&1 | tee e2e-test-output.log
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
           echo "=== E2E测试完成，退出码: $TEST_EXIT_CODE ==="
           # 如果测试失败，退出并传播错误
           if [ $TEST_EXIT_CODE -ne 0 ]; then
@@ -264,15 +260,19 @@ jobs:
         run: |
           # 检查哪个文件有内容
           if [ -f e2e-tests/e2e-test-output.log ] && [ -s e2e-tests/e2e-test-output.log ]; then
-            ERR=$(tail -n 200 e2e-tests/e2e-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
-            ERROR_SOURCE="核心测试"
+            # 获取最后50行，移除ANSI颜色码，转义JSON特殊字符
+            ERR=$(tail -n 200 e2e-tests/e2e-test-output.log | sed 's/\x1b\[[0-9;]*m//g' | sed 's/"/\\"/g' | sed 's/\\/\\\\/g' | tr '\n' ' ' | head -c 1000)
+            ERROR_SOURCE="E2E测试"
           else
             ERR="没有找到任何日志文件或日志文件为空"
             ERROR_SOURCE="系统错误"
           fi
           
+          # 构建JSON消息
+          MESSAGE="@Cursor [branch=$GITHUB_REF_NAME] fix this: ❌ *E2E Tests Failed* (${ERROR_SOURCE})\nBranch: $GITHUB_REF_NAME\nError: $ERR"
+          
           curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"@Cursor [branch=$GITHUB_REF_NAME] fix this: ❌ *Core Functionality Tests Failed* (${ERROR_SOURCE})\nBranch: $GITHUB_REF_NAME\nError: $ERR\"}" \
+            --data "{\"text\":\"$MESSAGE\"}" \
             $SLACK_WEBHOOK_URL
 
   # Frontend linting
