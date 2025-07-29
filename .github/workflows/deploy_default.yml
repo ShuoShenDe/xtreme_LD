@@ -243,6 +243,7 @@ jobs:
             e2e-tests/test-results/
             e2e-tests/html-report/
             e2e-tests/playwright-report/
+            e2e-tests/e2e-test-output.log
           retention-days: 7
 
       - name: Extract error and send Slack message
@@ -250,9 +251,17 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          ERR=$(tail -n 200 e2e-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
+          # 检查哪个文件有内容
+          if [ -f e2e-tests/e2e-test-output.log ] && [ -s e2e-tests/e2e-test-output.log ]; then
+            ERR=$(tail -n 200 e2e-tests/e2e-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
+            ERROR_SOURCE="核心测试"
+          else
+            ERR="没有找到任何日志文件或日志文件为空"
+            ERROR_SOURCE="系统错误"
+          fi
+          
           curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"❌ *E2E Tests Failed*\nError: $ERR\"}" \
+            --data "{\"text\":\"@Cursor [branch=$GITHUB_REF_NAME] fix this: ❌ *Core Functionality Tests Failed* (${ERROR_SOURCE})\nBranch: $GITHUB_REF_NAME\nError: $ERR\"}" \
             $SLACK_WEBHOOK_URL
 
   # Frontend linting
