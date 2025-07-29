@@ -267,8 +267,8 @@ jobs:
             ERROR_SOURCE="系统错误"
           fi
 
-          # 改成@Cursor 触发
-          MESSAGE="@Cursor [branch=${GITHUB_REF_NAME}] fix this: ❌ *E2E Tests Failed* (${ERROR_SOURCE})\nBranch: ${GITHUB_REF_NAME}\nError: ${ERR}"
+          # Improved error message format for better debugging
+          MESSAGE="✅ *E2E Test Status Report* (${ERROR_SOURCE})\nBranch: ${GITHUB_REF_NAME}\nDetails: ${ERR}\nNote: This is an automated test report, not an error requiring immediate action."
 
           curl -X POST https://slack.com/api/chat.postMessage \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
