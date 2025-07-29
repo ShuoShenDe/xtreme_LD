@@ -13,7 +13,7 @@ test.describe('Control Points Verification Tests', () => {
     // 等待页面加载完成
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000);
-  
+    await page.larger_than(0);
     // 等待编辑器就绪
     await imageToolPage.waitForEditorReady();
     

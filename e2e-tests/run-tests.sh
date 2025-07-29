@@ -448,6 +448,8 @@ start_single_server() {
     local log_file="/tmp/${name,,}-server.log"
     if [ "$CI_MODE" = "true" ]; then
         print_info "CI模式：启用日志记录 -> $log_file"
+        print_info "当前环境变量状态:"
+        env | grep -E "^(CI|NODE_|VITE_)" | head -5 || true
     fi
     
     # 启动服务器
@@ -463,6 +465,7 @@ start_single_server() {
         echo "=== 启动时环境变量 ===" >> "$log_file" 2>&1
         env | grep -E "^(VITE_|NODE_|CI)" >> "$log_file" 2>&1
         echo "=== 开始启动服务（CI Mock模式）===" >> "$log_file" 2>&1
+        print_info "使用环境变量: CI=true NODE_ENV=test VITE_CI=true"
         env CI="true" NODE_ENV="test" VITE_CI="true" npm run dev >> "$log_file" 2>&1 &
     else
         # 本地模式使用local配置（如果存在）
@@ -477,21 +480,22 @@ start_single_server() {
         return 1
     fi
     
+    print_info "服务器进程PID: $server_pid"
+    
     # 等待一下让进程启动
     sleep 2
     
-    if ! kill -0 "$server_pid" 2>/dev/null; then
-        print_error "进程启动失败或立即退出"
+    # 检查进程是否还在运行
+    if kill -0 "$server_pid" 2>/dev/null; then
+        print_info "✓ 服务器进程正在运行"
+    else
+        print_error "✗ 服务器进程已停止"
         if [ "$CI_MODE" = "true" ] && [ -f "$log_file" ]; then
-            print_error "查看错误日志:"
-            echo "=== Server Log Start ==="
-            tail -20 "$log_file" || echo "无法读取日志文件"
-            echo "=== Server Log End ==="
+            print_error "服务器启动日志:"
+            cat "$log_file" | tail -20
         fi
         return 1
     fi
-    
-    print_info "进程已启动，PID: $server_pid"
     
     # 将进程添加到服务器列表
     SERVERS_PID+=("$server_pid")
@@ -782,6 +786,18 @@ run_tests() {
     local test_type=$1
     print_info "开始运行测试: $test_type"
     
+    # 添加环境诊断信息
+    if [ "$CI_MODE" = "true" ]; then
+        print_info "=== CI环境诊断信息 ==="
+        print_info "当前工作目录: $(pwd)"
+        print_info "Node.js版本: $(node --version 2>/dev/null || echo '未安装')"
+        print_info "npm版本: $(npm --version 2>/dev/null || echo '未安装')"
+        print_info "Playwright版本: $(npx playwright --version 2>/dev/null || echo '未安装')"
+        print_info "环境变量检查:"
+        env | grep -E "^(CI|NODE_|VITE_|PLAYWRIGHT_)" || print_warning "未找到相关环境变量"
+        print_info "=== 诊断信息结束 ==="
+    fi
+    
     local test_exit_code=0
     case "$test_type" in
         "all")
@@ -796,6 +812,42 @@ run_tests() {
             ;;
         "core")
             print_info "运行核心功能测试 (矩形、折线、多边形)..."
+            
+            # 在CI模式下添加额外的检查
+            if [ "$CI_MODE" = "true" ]; then
+                print_info "=== 核心测试前置检查 ==="
+                print_info "检查测试文件是否存在..."
+                test_files=(
+                    "tests/e2e/image-tool/rect-annotation.spec.ts"
+                    "tests/e2e/image-tool/polyline-annotation.spec.ts"
+                    "tests/e2e/image-tool/polygon-annotation.spec.ts"
+                )
+                for file in "${test_files[@]}"; do
+                    if [ -f "$file" ]; then
+                        print_info "✓ $file 存在"
+                    else
+                        print_error "✗ $file 不存在"
+                    fi
+                done
+                
+                print_info "检查Playwright配置..."
+                if npx playwright config list >/dev/null 2>&1; then
+                    print_info "✓ Playwright配置有效"
+                else
+                    print_error "✗ Playwright配置无效"
+                fi
+                
+                print_info "检查image-tool项目配置..."
+                if npx playwright test --list --project=image-tool >/dev/null 2>&1; then
+                    test_count=$(npx playwright test --list --project=image-tool 2>/dev/null | wc -l)
+                    print_info "✓ image-tool项目配置正确，发现 $test_count 个测试"
+                else
+                    print_error "✗ image-tool项目配置有问题"
+                fi
+                print_info "=== 前置检查完成 ==="
+            fi
+            
+            print_info "执行核心测试命令..."
             npx playwright test tests/e2e/image-tool/rect-annotation.spec.ts tests/e2e/image-tool/polyline-annotation.spec.ts tests/e2e/image-tool/polygon-annotation.spec.ts --project=image-tool
             test_exit_code=$?
             ;;

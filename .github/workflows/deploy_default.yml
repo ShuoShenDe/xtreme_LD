@@ -115,8 +115,19 @@ jobs:
         run: |
           cd e2e-tests
           chmod +x run-tests.sh
+          echo "=== 开始运行核心测试 ==="
           ./run-tests.sh core --ci 2>&1 | tee core-test-output.log
-
+          echo "=== 核心测试完成 ==="
+          echo "输出文件大小: $(wc -l < core-test-output.log 2>/dev/null || echo '0') 行"
+          if [ -s core-test-output.log ]; then
+            echo "输出文件前10行:"
+            head -10 core-test-output.log
+            echo "输出文件后10行:"
+            tail -10 core-test-output.log
+          else
+            echo "警告: 输出文件为空或不存在"
+          fi
+          
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
@@ -126,6 +137,7 @@ jobs:
             e2e-tests/test-results/
             e2e-tests/html-report/
             e2e-tests/playwright-report/
+            e2e-tests/core-test-output.log
           retention-days: 3
 
       - name: Extract error and send Slack message
@@ -133,9 +145,17 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          ERR=$(tail -n 200 core-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
+          # 检查哪个文件有内容
+          if [ -f e2e-tests/core-test-output.log ] && [ -s e2e-tests/core-test-output.log ]; then
+            ERR=$(tail -n 200 e2e-tests/core-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
+            ERROR_SOURCE="核心测试"
+          else
+            ERR="没有找到任何日志文件或日志文件为空"
+            ERROR_SOURCE="系统错误"
+          fi
+          
           curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"❌ *Core Functionality Tests Failed*\nError: $ERR\"}" \
+            --data "{\"text\":\"@Cursor [branch=$GITHUB_REF_NAME] fix this: ❌ *Core Functionality Tests Failed* (${ERROR_SOURCE})\nBranch: $GITHUB_REF_NAME\nError: $ERR\"}" \
             $SLACK_WEBHOOK_URL
 
 
