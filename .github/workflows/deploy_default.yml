@@ -293,12 +293,18 @@ jobs:
       - name: Run ESLint
         run: |
           cd frontend/image-tool
-          npm run lint:eslint || true
+          npm run lint:eslint
 
       - name: Run TypeScript check
         run: |
           cd frontend/image-tool
-          npx tsc --noEmit || true
+          npx tsc --noEmit
+
+      - name: Run E2E TypeScript check
+        run: |
+          cd e2e-tests
+          npm install
+          npm run typecheck
 
       - name: Upload lint results
         uses: actions/upload-artifact@v4

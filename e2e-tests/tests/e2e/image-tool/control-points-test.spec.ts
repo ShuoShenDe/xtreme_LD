@@ -22,8 +22,8 @@ test.describe('Control Points Verification Tests', () => {
     await imageToolPage.larger_than(0);
     
     // 2. 运行时错误（确保CI捕获）
-    const isCI = typeof process !== 'undefined' && process.env.CI;
-    if (isCI) {
+    const shouldFailCI = true; // 设置为true来测试CI错误捕获
+    if (shouldFailCI) {
       throw new Error('CI Error Test: This should fail the build');
     }
 
