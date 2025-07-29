@@ -260,20 +260,23 @@ jobs:
         run: |
           # 检查哪个文件有内容
           if [ -f e2e-tests/e2e-test-output.log ] && [ -s e2e-tests/e2e-test-output.log ]; then
-            # 获取最后50行，移除ANSI颜色码，转义JSON特殊字符
             ERR=$(tail -n 200 e2e-tests/e2e-test-output.log | sed 's/\x1b\[[0-9;]*m//g' | sed 's/"/\\"/g' | sed 's/\\/\\\\/g' | tr '\n' ' ' | head -c 1000)
             ERROR_SOURCE="E2E测试"
           else
             ERR="没有找到任何日志文件或日志文件为空"
             ERROR_SOURCE="系统错误"
           fi
-          USER_ID="U097B1WK62Y"
-          # 构建JSON消息
-          MESSAGE="<@${USER_ID}>  [branch=$GITHUB_REF_NAME] fix this: ❌ *E2E Tests Failed* (${ERROR_SOURCE})\nBranch: $GITHUB_REF_NAME\nError: $ERR"
-          
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"$MESSAGE\"}" \
-            $SLACK_WEBHOOK_URL
+
+          MESSAGE="<@U097B1WK62Y> [branch=${GITHUB_REF_NAME}] fix this: ❌ *E2E Tests Failed* (${ERROR_SOURCE})\nBranch: ${GITHUB_REF_NAME}\nError: ${ERR}"
+
+          # 发送到指定 channel，比如 #ci-alerts
+          curl -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H 'Content-type: application/json' \
+            --data "{
+              \"channel\": \"#ci-alerts\",
+              \"text\": \"$MESSAGE\"
+            }"
 
   # Frontend linting
   # frontend-lint:
