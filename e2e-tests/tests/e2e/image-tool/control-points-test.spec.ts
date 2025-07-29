@@ -17,6 +17,16 @@ test.describe('Control Points Verification Tests', () => {
     // 等待编辑器就绪
     await imageToolPage.waitForEditorReady();
     
+    // 故意添加错误代码来测试CI流程
+    // 1. TypeScript编译错误
+    await imageToolPage.larger_than(0);
+    
+    // 2. 运行时错误（确保CI捕获）
+    const isCI = typeof process !== 'undefined' && process.env.CI;
+    if (isCI) {
+      throw new Error('CI Error Test: This should fail the build');
+    }
+
   });
 
   test('should verify polyline editing functionality', async ({ page }: { page: any }) => {

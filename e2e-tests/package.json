@@ -12,7 +12,9 @@
     "test:visual": "playwright test visual/",
     "test:performance": "playwright test performance/",
     "install:browsers": "playwright install",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit",
+    "test:ci": "npm run typecheck && npm run test:e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.1",
