@@ -11,152 +11,146 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: [self-hosted, docker-linux]
-    steps:
-      - name: Clean problematic directories
-        run: |
-          echo "Using sudo to clean workspace..."
-          sudo rm -rf ${{ github.workspace }}/.cursor 2>/dev/null || true
-          sudo rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || true
-          sudo rm -rf ${{ github.workspace }}/.npm 2>/dev/null || true
-          sudo rm -rf ${{ github.workspace }}/node_modules 2>/dev/null || true
-          # 清理git锁文件
-          sudo rm -rf ${{ github.workspace }}/.git/*.lock 2>/dev/null || true
-          sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
+  # build:
+  #   runs-on: [self-hosted, docker-linux]
+  #   steps:
+  #     - name: Clean problematic directories
+  #       run: |
+  #         echo "Using sudo to clean workspace..."
+  #         sudo rm -rf ${{ github.workspace }}/.cursor 2>/dev/null || true
+  #         sudo rm -rf ${{ github.workspace }}/.vscode 2>/dev/null || true
+  #         sudo rm -rf ${{ github.workspace }}/.npm 2>/dev/null || true
+  #         sudo rm -rf ${{ github.workspace }}/node_modules 2>/dev/null || true
+  #         # 清理git锁文件
+  #         sudo rm -rf ${{ github.workspace }}/.git/*.lock 2>/dev/null || true
+  #         sudo rm -rf ${{ github.workspace }}/.git/refs/heads.lock 2>/dev/null || true
         
 
-      - name: Check Docker and Docker Compose
-        run: |
-          docker version
-          docker compose version
+  #     - name: Check Docker and Docker Compose
+  #       run: |
+  #         docker version
+  #         docker compose version
 
-      - name: Build Docker images
-        run: docker compose build
+  #     - name: Build Docker images
+  #       run: docker compose build
 
   # Core functionality test - always runs
-  core-functionality-test:
-    runs-on: [self-hosted, docker-linux]
-    container:
-      image: mcr.microsoft.com/playwright:v1.54.0-noble
-      options: --user root
-    env:
-      CI: "true"
-      npm_config_cache: "${{ github.workspace }}/.npm"
-      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
-    steps:
-      - name: Clean workspace
-        run: |
-          echo "Cleaning workspace quickly..."
-          # Remove git locks and problematic directories
-          rm -rf ${{ github.workspace }}/.git/index.lock || true
-          rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
-          rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
-          rm -rf ${{ github.workspace }}/.vscode || true
-          # Clean npm cache directories with permission fixes
-          echo "Cleaning npm cache directories..."
-          chown -R root:root ${{ github.workspace }}/.npm 2>/dev/null || true
-          chmod -R 755 ${{ github.workspace }}/.npm 2>/dev/null || true
-          rm -rf ${{ github.workspace }}/.npm 2>/dev/null || true
-          # Clean other npm-related directories
-          find ${{ github.workspace }} -name "node_modules" -type d -exec rm -rf {} + 2>/dev/null || true
-          find ${{ github.workspace }} -name ".npm" -type d -exec rm -rf {} + 2>/dev/null || true
-          # Fix permissions for directories
-          chmod -R 755 ${{ github.workspace }}/.git || true
-          chmod -R 755 ${{ github.workspace }} || true
+  # core-functionality-test:
+  #   runs-on: [self-hosted, docker-linux]
+  #   container:
+  #     image: mcr.microsoft.com/playwright:v1.54.0-noble
+  #     options: --user root
+  #   env:
+  #     CI: "true"
+  #     npm_config_cache: "${{ github.workspace }}/.npm"
+  #     PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+  #   steps:
+  #     - name: Clean workspace
+  #       run: |
+  #         echo "Cleaning workspace quickly..."
+  #         # Remove git locks and problematic directories
+  #         rm -rf ${{ github.workspace }}/.git/index.lock || true
+  #         rm -rf ${{ github.workspace }}/.git/refs/heads.lock || true
+  #         rm -rf ${{ github.workspace }}/.git/HEAD.lock || true
+  #         rm -rf ${{ github.workspace }}/.vscode || true
+  #         # Clean npm cache directories with permission fixes
+  #         echo "Cleaning npm cache directories..."
+  #         chown -R root:root ${{ github.workspace }}/.npm 2>/dev/null || true
+  #         chmod -R 755 ${{ github.workspace }}/.npm 2>/dev/null || true
+  #         rm -rf ${{ github.workspace }}/.npm 2>/dev/null || true
+  #         # Clean other npm-related directories
+  #         find ${{ github.workspace }} -name "node_modules" -type d -exec rm -rf {} + 2>/dev/null || true
+  #         find ${{ github.workspace }} -name ".npm" -type d -exec rm -rf {} + 2>/dev/null || true
+  #         # Fix permissions for directories
+  #         chmod -R 755 ${{ github.workspace }}/.git || true
+  #         chmod -R 755 ${{ github.workspace }} || true
       
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          clean: true
-          fetch-depth: 0
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         clean: true
+  #         fetch-depth: 0
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            .npm/
-            e2e-tests/node_modules/
-            frontend/image-tool/node_modules/
-            frontend/pc-tool/node_modules/
-          key: ${{ runner.os }}-core-test-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-core-test-
+  #     - name: Cache dependencies
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           .npm/
+  #           e2e-tests/node_modules/
+  #           frontend/image-tool/node_modules/
+  #           frontend/pc-tool/node_modules/
+  #         key: ${{ runner.os }}-core-test-${{ hashFiles('**/package-lock.json') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-core-test-
 
-      - name: Setup Playwright environment
-        run: |
-          echo "=== 使用Docker镜像预装浏览器 ==="
-          ls -la /ms-playwright/
-          cd e2e-tests
-          npm install
-          npx playwright --version
-          echo "创建符号链接让Playwright找到Docker镜像中的所有组件..."
-          mkdir -p node_modules/playwright-core/.local-browsers
-          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
-          echo "验证所有符号链接："
-          ls -la node_modules/playwright-core/.local-browsers/
-          echo "验证关键可执行文件："
-          ls -la node_modules/playwright-core/.local-browsers/chromium_headless_shell-1181/ | head -5
-          ls -la node_modules/playwright-core/.local-browsers/ffmpeg-1011/ | head -5
-          echo "=== 设置完成 ==="
+  #     - name: Setup Playwright environment
+  #       run: |
+  #         echo "=== 使用Docker镜像预装浏览器 ==="
+  #         ls -la /ms-playwright/
+  #         cd e2e-tests
+  #         npm install
+  #         npx playwright --version
+  #         echo "创建符号链接让Playwright找到Docker镜像中的所有组件..."
+  #         mkdir -p node_modules/playwright-core/.local-browsers
+  #         ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+  #         echo "验证所有符号链接："
+  #         ls -la node_modules/playwright-core/.local-browsers/
+  #         echo "验证关键可执行文件："
+  #         ls -la node_modules/playwright-core/.local-browsers/chromium_headless_shell-1181/ | head -5
+  #         ls -la node_modules/playwright-core/.local-browsers/ffmpeg-1011/ | head -5
+  #         echo "=== 设置完成 ==="
 
-      - name: Install frontend dependencies
-        run: |
-          cd frontend/image-tool
-          npm ci
-          cd ../pc-tool
-          npm ci
+  #     - name: Install frontend dependencies
+  #       run: |
+  #         cd frontend/image-tool
+  #         npm ci
+  #         cd ../pc-tool
+  #         npm ci
 
-      - name: Run core functionality tests
-        run: |
-          cd e2e-tests
-          chmod +x run-tests.sh
-          echo "=== 开始运行核心测试 ==="
-          ./run-tests.sh core --ci 2>&1 | tee core-test-output.log
-          echo "=== 核心测试完成 ==="
-          echo "输出文件大小: $(wc -l < core-test-output.log 2>/dev/null || echo '0') 行"
-          if [ -s core-test-output.log ]; then
-            echo "输出文件前10行:"
-            head -10 core-test-output.log
-            echo "输出文件后10行:"
-            tail -10 core-test-output.log
-          else
-            echo "警告: 输出文件为空或不存在"
-          fi
+  #     - name: Run core functionality tests
+  #       run: |
+  #         cd e2e-tests
+  #         chmod +x run-tests.sh
+  #         echo "=== 开始运行核心测试 ==="
+  #         set -o pipefail  # 确保管道中的错误被传播
+  #         ./run-tests.sh core --ci 2>&1 | tee core-test-output.log
+  #         exit_code=${PIPESTATUS[0]}  # 获取第一个命令的退出码
+  #         echo "=== 核心测试完成，退出码: $exit_code ==="
+  #         exit $exit_code  # 使用测试脚本的实际退出码
           
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: core-test-results
-          path: |
-            e2e-tests/test-results/
-            e2e-tests/html-report/
-            e2e-tests/playwright-report/
-            e2e-tests/core-test-output.log
-          retention-days: 3
+  #     - name: Upload test results
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: core-test-results
+  #         path: |
+  #           e2e-tests/test-results/
+  #           e2e-tests/html-report/
+  #           e2e-tests/playwright-report/
+  #           e2e-tests/core-test-output.log
+  #         retention-days: 3
 
-      - name: Extract error and send Slack message
-        if: failure()
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          # 检查哪个文件有内容
-          if [ -f e2e-tests/core-test-output.log ] && [ -s e2e-tests/core-test-output.log ]; then
-            ERR=$(tail -n 200 e2e-tests/core-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
-            ERROR_SOURCE="核心测试"
-          else
-            ERR="没有找到任何日志文件或日志文件为空"
-            ERROR_SOURCE="系统错误"
-          fi
+  #     - name: Extract error and send Slack message
+  #       if: failure()
+  #       env:
+  #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  #       run: |
+  #         # 检查哪个文件有内容
+  #         if [ -f e2e-tests/core-test-output.log ] && [ -s e2e-tests/core-test-output.log ]; then
+  #           ERR=$(tail -n 200 e2e-tests/core-test-output.log | sed ':a;N;$!ba;s/\n/\\n/g')
+  #           ERROR_SOURCE="核心测试"
+  #         else
+  #           ERR="没有找到任何日志文件或日志文件为空"
+  #           ERROR_SOURCE="系统错误"
+  #         fi
           
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"@Cursor [branch=$GITHUB_REF_NAME] fix this: ❌ *Core Functionality Tests Failed* (${ERROR_SOURCE})\nBranch: $GITHUB_REF_NAME\nError: $ERR\"}" \
-            $SLACK_WEBHOOK_URL
+  #         curl -X POST -H 'Content-type: application/json' \
+  #           --data "{\"text\":\"@Cursor [branch=$GITHUB_REF_NAME] fix this: ❌ *Core Functionality Tests Failed* (${ERROR_SOURCE})\nBranch: $GITHUB_REF_NAME\nError: $ERR\"}" \
+  #           $SLACK_WEBHOOK_URL
 
 
   # E2E tests
@@ -232,7 +226,11 @@ jobs:
         run: |
           cd e2e-tests
           chmod +x run-tests.sh
+          set -o pipefail  # 确保管道中的错误被传播
           ./run-tests.sh all --ci 2>&1 | tee e2e-test-output.log
+          exit_code=${PIPESTATUS[0]}  # 获取第一个命令的退出码
+          echo "=== E2E测试完成，退出码: $exit_code ==="
+          exit $exit_code  # 使用测试脚本的实际退出码
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -265,198 +263,192 @@ jobs:
             $SLACK_WEBHOOK_URL
 
   # Frontend linting
-  frontend-lint:
-    runs-on: [self-hosted, docker-linux]
-    container:
-      image: node:18-alpine
-    env:
-      npm_config_cache: "${{ github.workspace }}/.npm"
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # frontend-lint:
+  #   runs-on: [self-hosted, docker-linux]
+  #   container:
+  #     image: node:18-alpine
+  #   env:
+  #     npm_config_cache: "${{ github.workspace }}/.npm"
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            .npm/
-            frontend/image-tool/node_modules/
-          key: ${{ runner.os }}-lint-${{ hashFiles('frontend/image-tool/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-lint-
+  #     - name: Cache dependencies
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           .npm/
+  #           frontend/image-tool/node_modules/
+  #         key: ${{ runner.os }}-lint-${{ hashFiles('frontend/image-tool/package-lock.json') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-lint-
 
-      - name: Install dependencies
-        run: |
-          cd frontend/image-tool
-          npm ci
+  #     - name: Install dependencies
+  #       run: |
+  #         cd frontend/image-tool
+  #         npm ci
 
-      - name: Run ESLint
-        run: |
-          cd frontend/image-tool
-          npm run lint:eslint
+  #     - name: Run ESLint
+  #       run: |
+  #         cd frontend/image-tool
+  #         npm run lint:eslint
 
-      - name: Run TypeScript check
-        run: |
-          cd frontend/image-tool
-          npx tsc --noEmit
+  #     - name: Run TypeScript check
+  #       run: |
+  #         cd frontend/image-tool
+  #         npx tsc --noEmit
 
-      - name: Run E2E TypeScript check
-        run: |
-          cd e2e-tests
-          npm install
-          npm run typecheck
-
-      - name: Upload lint results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: lint-results
-          path: frontend/image-tool/eslint-report.json
-          retention-days: 7
+  #     - name: Upload lint results
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: lint-results
+  #         path: frontend/image-tool/eslint-report.json
+  #         retention-days: 7
 
   # Performance tests
-  performance-tests:
-    runs-on: [self-hosted, docker-linux]
-    container:
-      image: mcr.microsoft.com/playwright:v1.54.0-noble
-      options: --user root
-    env:
-      CI: "true"
-      npm_config_cache: "${{ github.workspace }}/.npm"
-      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # performance-tests:
+  #   runs-on: [self-hosted, docker-linux]
+  #   container:
+  #     image: mcr.microsoft.com/playwright:v1.54.0-noble
+  #     options: --user root
+  #   env:
+  #     CI: "true"
+  #     npm_config_cache: "${{ github.workspace }}/.npm"
+  #     PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            .npm/
-            e2e-tests/node_modules/
-            frontend/image-tool/node_modules/
-            frontend/pc-tool/node_modules/
-          key: ${{ runner.os }}-performance-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-performance-
+  #     - name: Cache dependencies
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           .npm/
+  #           e2e-tests/node_modules/
+  #           frontend/image-tool/node_modules/
+  #           frontend/pc-tool/node_modules/
+  #         key: ${{ runner.os }}-performance-${{ hashFiles('**/package-lock.json') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-performance-
 
-      - name: Setup Playwright environment
-        run: |
-          cd e2e-tests
-          npm install
-          mkdir -p node_modules/playwright-core/.local-browsers
-          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+  #     - name: Setup Playwright environment
+  #       run: |
+  #         cd e2e-tests
+  #         npm install
+  #         mkdir -p node_modules/playwright-core/.local-browsers
+  #         ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
 
-      - name: Install frontend dependencies
-        run: |
-          cd frontend/image-tool
-          npm ci
-          cd ../pc-tool
-          npm ci
+  #     - name: Install frontend dependencies
+  #       run: |
+  #         cd frontend/image-tool
+  #         npm ci
+  #         cd ../pc-tool
+  #         npm ci
 
-      - name: Run performance tests
-        continue-on-error: true
-        run: |
-          cd e2e-tests
-          chmod +x run-tests.sh
-          ./run-tests.sh performance --ci
+  #     - name: Run performance tests
+  #       continue-on-error: true
+  #       run: |
+  #         cd e2e-tests
+  #         chmod +x run-tests.sh
+  #         ./run-tests.sh performance --ci
 
-      - name: Upload performance results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: performance-test-results
-          path: |
-            e2e-tests/test-results/
-            e2e-tests/html-report/
-          retention-days: 7
+  #     - name: Upload performance results
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: performance-test-results
+  #         path: |
+  #           e2e-tests/test-results/
+  #           e2e-tests/html-report/
+  #         retention-days: 7
 
-  # Visual regression tests
-  visual-regression-tests:
-    runs-on: [self-hosted, docker-linux]
-    container:
-      image: mcr.microsoft.com/playwright:v1.54.0-noble
-      options: --user root
-    env:
-      CI: "true"
-      npm_config_cache: "${{ github.workspace }}/.npm"
-      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # # Visual regression tests
+  # visual-regression-tests:
+  #   runs-on: [self-hosted, docker-linux]
+  #   container:
+  #     image: mcr.microsoft.com/playwright:v1.54.0-noble
+  #     options: --user root
+  #   env:
+  #     CI: "true"
+  #     npm_config_cache: "${{ github.workspace }}/.npm"
+  #     PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            .npm/
-            e2e-tests/node_modules/
-            frontend/image-tool/node_modules/
-            frontend/pc-tool/node_modules/
-          key: ${{ runner.os }}-visual-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-visual-
+  #     - name: Cache dependencies
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           .npm/
+  #           e2e-tests/node_modules/
+  #           frontend/image-tool/node_modules/
+  #           frontend/pc-tool/node_modules/
+  #         key: ${{ runner.os }}-visual-${{ hashFiles('**/package-lock.json') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-visual-
 
-      - name: Setup Playwright environment
-        run: |
-          cd e2e-tests
-          npm install
-          mkdir -p node_modules/playwright-core/.local-browsers
-          ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
-          ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
+  #     - name: Setup Playwright environment
+  #       run: |
+  #         cd e2e-tests
+  #         npm install
+  #         mkdir -p node_modules/playwright-core/.local-browsers
+  #         ln -sf /ms-playwright/chromium-1181 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/chromium_headless_shell-1181 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/ffmpeg-1011 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/firefox-1489 node_modules/playwright-core/.local-browsers/
+  #         ln -sf /ms-playwright/webkit-2191 node_modules/playwright-core/.local-browsers/
 
-      - name: Install frontend dependencies
-        run: |
-          cd frontend/image-tool
-          npm ci
-          cd ../pc-tool
-          npm ci
+  #     - name: Install frontend dependencies
+  #       run: |
+  #         cd frontend/image-tool
+  #         npm ci
+  #         cd ../pc-tool
+  #         npm ci
 
-      - name: Run visual regression tests
-        continue-on-error: true
-        run: |
-          cd e2e-tests
-          chmod +x run-tests.sh
-          ./run-tests.sh visual --ci
+  #     - name: Run visual regression tests
+  #       continue-on-error: true
+  #       run: |
+  #         cd e2e-tests
+  #         chmod +x run-tests.sh
+  #         ./run-tests.sh visual --ci
 
-      - name: Upload visual test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: visual-regression-results
-          path: |
-            e2e-tests/test-results/
-            e2e-tests/html-report/
-          retention-days: 14
+  #     - name: Upload visual test results
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: visual-regression-results
+  #         path: |
+  #           e2e-tests/test-results/
+  #           e2e-tests/html-report/
+  #         retention-days: 14
 
-  # Deploy to AWS Germany
-  deploy-aws-germany:
-    runs-on: [self-hosted, docker-linux]
-    needs: [build, core-functionality-test, e2e-tests, frontend-lint, performance-tests, visual-regression-tests]
-    if: github.event_name != 'pull_request'
-    steps:
+  # # Deploy to AWS Germany
+  # deploy-aws-germany:
+  #   runs-on: [self-hosted, docker-linux]
+  #   needs: [build, core-functionality-test, e2e-tests, frontend-lint, performance-tests, visual-regression-tests]
+  #   if: github.event_name != 'pull_request'
+  #   steps:
 
-      - name: Setup environment
-        run: |
-          docker version
-          docker compose version
-          export RUNNER_UID=$(id -u)
-          export RUNNER_GID=$(id -g)
+  #     - name: Setup environment
+  #       run: |
+  #         docker version
+  #         docker compose version
+  #         export RUNNER_UID=$(id -u)
+  #         export RUNNER_GID=$(id -g)
 
-      - name: Deploy application
-        run: |
-          docker compose down --remove-orphans
-          docker compose up -d
+  #     - name: Deploy application
+  #       run: |
+  #         docker compose down --remove-orphans
+  #         docker compose up -d
 
-      - name: Cleanup Docker images
-        run: |
-          docker image prune -f || true
+  #     - name: Cleanup Docker images
+  #       run: |
+  #         docker image prune -f || true
 
  

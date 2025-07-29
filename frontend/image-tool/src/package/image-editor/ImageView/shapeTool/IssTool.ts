@@ -84,7 +84,6 @@ export default class IssTool extends ShapeTool {
     
     this.initEditEvent();
     this.initializeTimeTracking();
-    throw new Error('Intentional test error for CI pipeline verification'); // when ci find, just delete this line
   }
 
   private initializeComponents() {
