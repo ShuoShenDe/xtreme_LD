@@ -116,11 +116,17 @@ jobs:
   #         cd e2e-tests
   #         chmod +x run-tests.sh
   #         echo "=== 开始运行核心测试 ==="
-  #         set -o pipefail  # 确保管道中的错误被传播
-  #         ./run-tests.sh core --ci 2>&1 | tee core-test-output.log
-  #         exit_code=${PIPESTATUS[0]}  # 获取第一个命令的退出码
-  #         echo "=== 核心测试完成，退出码: $exit_code ==="
-  #         exit $exit_code  # 使用测试脚本的实际退出码
+  #         # 运行测试并捕获输出和退出码
+  #         ./run-tests.sh core --ci > core-test-output.log 2>&1
+  #         TEST_EXIT_CODE=$?
+  #         # 显示日志内容
+  #         cat core-test-output.log
+  #         echo "=== 核心测试完成，退出码: $TEST_EXIT_CODE ==="
+  #         # 如果测试失败，退出并传播错误
+  #         if [ $TEST_EXIT_CODE -ne 0 ]; then
+  #           echo "=== 核心测试失败 ==="
+  #           exit $TEST_EXIT_CODE
+  #         fi
           
   #     - name: Upload test results
   #       uses: actions/upload-artifact@v4
@@ -226,11 +232,18 @@ jobs:
         run: |
           cd e2e-tests
           chmod +x run-tests.sh
-          set -o pipefail  # 确保管道中的错误被传播
-          ./run-tests.sh all --ci 2>&1 | tee e2e-test-output.log
-          exit_code=${PIPESTATUS[0]}  # 获取第一个命令的退出码
-          echo "=== E2E测试完成，退出码: $exit_code ==="
-          exit $exit_code  # 使用测试脚本的实际退出码
+          echo "=== 开始运行E2E测试 ==="
+          # 运行测试并捕获输出和退出码
+          ./run-tests.sh all --ci > e2e-test-output.log 2>&1
+          TEST_EXIT_CODE=$?
+          # 显示日志内容
+          cat e2e-test-output.log
+          echo "=== E2E测试完成，退出码: $TEST_EXIT_CODE ==="
+          # 如果测试失败，退出并传播错误
+          if [ $TEST_EXIT_CODE -ne 0 ]; then
+            echo "=== E2E测试失败 ==="
+            exit $TEST_EXIT_CODE
+          fi
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
