@@ -267,9 +267,9 @@ jobs:
             ERR="没有找到任何日志文件或日志文件为空"
             ERROR_SOURCE="系统错误"
           fi
-          
+          USER_ID="U097B1WK62Y"
           # 构建JSON消息
-          MESSAGE="@Cursor [branch=$GITHUB_REF_NAME] fix this: ❌ *E2E Tests Failed* (${ERROR_SOURCE})\nBranch: $GITHUB_REF_NAME\nError: $ERR"
+          MESSAGE="<@${USER_ID}>  [branch=$GITHUB_REF_NAME] fix this: ❌ *E2E Tests Failed* (${ERROR_SOURCE})\nBranch: $GITHUB_REF_NAME\nError: $ERR"
           
           curl -X POST -H 'Content-type: application/json' \
             --data "{\"text\":\"$MESSAGE\"}" \
