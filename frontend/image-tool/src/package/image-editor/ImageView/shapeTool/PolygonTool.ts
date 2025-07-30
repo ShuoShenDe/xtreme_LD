@@ -117,7 +117,13 @@ export default class PolygonTool extends PolylineTool {
         pointIndex: index,
       });
       
+      // 添加点击事件来选中锚点
+      anchor.on('click', () => {
+        this.selectAnchor(anchor);
+      });
+      
       anchor.on('dragstart', () => {
+        this.selectAnchor(anchor);
         this.onEditStart();
       });
       
@@ -127,11 +133,23 @@ export default class PolygonTool extends PolylineTool {
         const objX = this.object!.x();
         const objY = this.object!.y();
         // 转换为相对坐标
-        currentPoints[index] = {
+        const newPoint = {
           x: anchorPos.x - objX,
           y: anchorPos.y - objY
         };
-        this.object!.setAttrs({ points: currentPoints });
+        
+        // 检查是否需要合并点
+        const mergeResult = this.checkPointMerge(index, newPoint, currentPoints);
+        if (mergeResult.shouldMerge) {
+          // 合并点：移除当前点并更新点数组
+          currentPoints.splice(index, 1);
+          this.object!.setAttrs({ points: currentPoints });
+          this.updateEditObject(); // 重新创建锚点
+        } else {
+          // 正常更新点位置
+          currentPoints[index] = newPoint;
+          this.object!.setAttrs({ points: currentPoints });
+        }
         
         this.updatePolygonDisplay();
         this.onEditChange();

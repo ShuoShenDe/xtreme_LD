@@ -12,7 +12,7 @@ export default class Anchor extends Circle {
 
   constructor(config?: ICircleConfig) {
     super(config);
-    this.anchorIndex = isNumber(config?.pointIndex) ? config?.pointIndex : 0;
-    this.anchorType = isNumber(config?.pointType) ? config?.pointType : -1;
+    this.anchorIndex = isNumber(config?.pointIndex) ? config!.pointIndex! : 0;
+    this.anchorType = isNumber(config?.pointType) ? config!.pointType! : -1;
   }
 }
