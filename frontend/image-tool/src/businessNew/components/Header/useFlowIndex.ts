@@ -42,6 +42,12 @@ export default function useFlowIndex() {
       if (index < 0 || index >= frames.length) {
         return;
       }
+      // Persist pending changes before switching frames
+      const needSave = frames.findIndex((e) => e.needSave) !== -1;
+      if (needSave) {
+        const result = await editor.save();
+        if (!result) return;
+      }
       editor.switchFrame(index);
     }
   }
