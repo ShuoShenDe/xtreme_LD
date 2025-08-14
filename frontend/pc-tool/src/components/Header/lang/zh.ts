@@ -12,5 +12,6 @@ const zh: ILocale = {
     'btn-modify': '编辑',
     'btn-full': '全屏',
     'btn-full-exit': '退出全屏',
+    'btn-bg-color': '背景',
 };
 export { zh };

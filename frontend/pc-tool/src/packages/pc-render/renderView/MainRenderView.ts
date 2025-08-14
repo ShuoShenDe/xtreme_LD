@@ -34,7 +34,7 @@ export default class MainRenderView extends Render {
     // helper: THREE.BoxHelper;
     // material: PointsMaterial;
     selectColor: THREE.Color = new THREE.Color(1, 1, 0); // 改为黄色，表示pending状态
-    backgroundColor: THREE.Color = new THREE.Color(0, 0, 0);
+    backgroundColor: THREE.Color;
     boxInvertMatrix: THREE.Matrix4 = new THREE.Matrix4();
     
     // 选中动画相关
@@ -55,6 +55,7 @@ export default class MainRenderView extends Render {
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setPixelRatio(pointCloud.pixelRatio);
         this.renderer.setSize(this.width, this.height);
+        this.backgroundColor = new THREE.Color(config.backgroundColor || 0x000000);
         this.renderer.setClearColor(this.backgroundColor);
         this.renderer.sortObjects = false;
         this.renderer.autoClear = false;
