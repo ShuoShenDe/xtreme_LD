@@ -108,6 +108,11 @@
                     iState.fullScreen ? $$('btn-full-exit') : $$('btn-full')
                 }}</div>
             </a-button>
+            <!-- background color -->
+            <a-button class="basic-btn" size="large" @click="toggleBackgroundColor">
+                <template #icon><BgColorsOutlined /></template>
+                <div class="title">{{ $$('btn-bg-color') }}</div>
+            </a-button>
             <!-- Language Switch -->
             <a-divider type="vertical" style="height: 32px; background-color: #57575c" />
             <div class="language-switch" @click="toggleLanguage">
@@ -173,6 +178,7 @@
         LeftOutlined,
         SaveOutlined,
         CloseOutlined,
+        BgColorsOutlined,
     } from '@ant-design/icons-vue';
     import { useInjectEditor } from '../../state';
     import useHeader from './useHeader';
@@ -200,6 +206,7 @@
         onToggleSkip,
         onSubmit,
         onModify,
+        toggleBackgroundColor,
     } = useHeader();
     
     let { has, canEdit } = useUI();
