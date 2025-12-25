@@ -11,6 +11,7 @@ const en = {
     'btn-modify': 'Modify',
     'btn-full': 'Full Screen',
     'btn-full-exit': 'Exit Full Screen',
+    'btn-bg-color': 'Background',
 };
 export type ILocale = typeof en;
 export { en };

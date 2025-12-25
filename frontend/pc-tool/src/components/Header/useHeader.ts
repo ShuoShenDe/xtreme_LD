@@ -6,7 +6,8 @@ import * as api from '../../api';
 import * as locale from './lang';
 import screenFull from 'screenfull';
 import { Modal } from 'ant-design-vue';
-import { SideRenderView } from 'pc-render';
+import { MainRenderView, SideRenderView } from 'pc-render';
+import * as THREE from 'three';
 
 export default function useHeader() {
     let editor = useInjectEditor();
@@ -306,6 +307,16 @@ export default function useHeader() {
         bsState.modifying = false;
     }
 
+    function toggleBackgroundColor() {
+        const mainView = editor.viewManager.getMainView() as MainRenderView;
+        if (mainView) {
+            const currentBg = editor.state.config.backgroundColor;
+            const newBg = currentBg === '#000000' ? '#ffffff' : '#000000';
+            editor.state.config.backgroundColor = newBg;
+            mainView.setBackgroundColor(new THREE.Color(newBg));
+        }
+    }
+
     return {
         $$,
         iState,
@@ -324,5 +335,6 @@ export default function useHeader() {
         onToggleSkip,
         onSubmit,
         onModify,
+        toggleBackgroundColor,
     };
 }

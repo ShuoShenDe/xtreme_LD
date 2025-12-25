@@ -182,5 +182,6 @@ function getDefaultConfig(): IConfig {
         withoutTaskId: withoutTaskId,
         boxMethod: 'AI',
         autoLoad: false,
+        backgroundColor: '#000000',
     };
 }

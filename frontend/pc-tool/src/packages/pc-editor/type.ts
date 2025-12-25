@@ -302,6 +302,7 @@ export interface IConfig {
     limitRect2Image: boolean;
 
     autoLoad: boolean;
+    backgroundColor: string;
 }
 
 export interface IAnnotationInfo {
