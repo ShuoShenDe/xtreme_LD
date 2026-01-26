@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Point Deletion and Merging Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e6f7ff;
+            border-radius: 6px;
+            background-color: #f6ffed;
+        }
+        .demo-title {
+            color: #1890ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .demo-description {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        .steps {
+            background: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #52c41a;
+        }
+        .step {
+            margin-bottom: 10px;
+            padding: 8px 0;
+        }
+        .step-number {
+            display: inline-block;
+            background: #1890ff;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            margin-right: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .key-highlight {
+            background: #ff4d4f;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .feature-highlight {
+            background: #52c41a;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .warning {
+            background: #fff2e8;
+            border: 1px solid #ffbb96;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .canvas-area {
+            width: 100%;
+            height: 300px;
+            border: 2px dashed #d9d9d9;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 16px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="color: #1890ff; text-align: center; margin-bottom: 30px;">
+            🎯 Point Deletion and Merging Demo
+        </h1>
+        
+        <div class="demo-section">
+            <div class="demo-title">🔥 功能1: 单点删除 (Individual Point Deletion)</div>
+            <div class="demo-description">
+                在Polyline和Polygon编辑模式下，可以选中单个锚点并删除，而不是删除整个形状。
+            </div>
+            <div class="steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    创建一个多点的Polyline或Polygon
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    切换到编辑工具，选中创建的形状
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <span class="feature-highlight">点击</span>任意一个锚点进行选中（锚点会变红高亮）
+                </div>
+                <div class="step">
+                    <span class="step-number">4</span>
+                    按下 <span class="key-highlight">Delete</span> 键删除选中的点
+                </div>
+                <div class="step">
+                    <span class="step-number">5</span>
+                    验证：点数减少1，形状保持完整
+                </div>
+            </div>
+            <div class="warning">
+                ⚠️ <strong>保护机制：</strong> Polyline最少保留2个点，Polygon最少保留3个点
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-title">🔄 功能2: 点合并 (Point Merging)</div>
+            <div class="demo-description">
+                拖动锚点时，如果与前一个或后一个点的距离小于10像素，会自动合并成一个点。
+            </div>
+            <div class="steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    创建一个多点的Polyline或Polygon
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    切换到编辑工具，选中创建的形状
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <span class="feature-highlight">拖拽</span>某个锚点靠近相邻的点（距离<10px）
+                </div>
+                <div class="step">
+                    <span class="step-number">4</span>
+                    释放鼠标，观察点自动合并
+                </div>
+                <div class="step">
+                    <span class="step-number">5</span>
+                    验证：点数减少1，线段变短
+                </div>
+            </div>
+            <div class="warning">
+                💡 <strong>合并阈值：</strong> 当前设置为10像素，可以根据需要调整
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-title">🎨 测试案例 (Test Cases)</div>
+            <div class="demo-description">
+                以下是推荐的测试步骤，确保功能正常工作：
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+                <div style="background: #f0f9ff; padding: 15px; border-radius: 4px;">
+                    <h4 style="color: #1890ff; margin-top: 0;">📐 Polyline测试</h4>
+                    <div class="canvas-area">画一个5点的折线</div>
+                    <ul style="font-size: 14px; color: #666;">
+                        <li>删除中间的点 ✓</li>
+                        <li>拖动点进行合并 ✓</li>
+                        <li>尝试删除到只剩1个点 ❌</li>
+                    </ul>
+                </div>
+                
+                <div style="background: #f6ffed; padding: 15px; border-radius: 4px;">
+                    <h4 style="color: #52c41a; margin-top: 0;">🔺 Polygon测试</h4>
+                    <div class="canvas-area">画一个5边形</div>
+                    <ul style="font-size: 14px; color: #666;">
+                        <li>删除任意一个点 ✓</li>
+                        <li>拖动点进行合并 ✓</li>
+                        <li>尝试删除到只剩2个点 ❌</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-title">🔧 技术实现细节</div>
+            <div class="demo-description">
+                本功能的核心实现要点：
+            </div>
+            <div style="background: #fafafa; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 14px;">
+                <div style="margin-bottom: 10px;"><strong>1. 锚点选中跟踪：</strong> selectedAnchor属性</div>
+                <div style="margin-bottom: 10px;"><strong>2. 删除操作检查：</strong> checkEditAction(ToolAction.del)</div>
+                <div style="margin-bottom: 10px;"><strong>3. 点合并检测：</strong> checkPointMerge()距离计算</div>
+                <div style="margin-bottom: 10px;"><strong>4. 最小点数保护：</strong> _minPointNum限制</div>
+                <div><strong>5. 视觉反馈：</strong> 选中锚点红色高亮</div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; color: #999; font-size: 14px;">
+            💻 在实际的image-tool环境中测试这些功能
+        </div>
+    </div>
+</body>
+</html>
