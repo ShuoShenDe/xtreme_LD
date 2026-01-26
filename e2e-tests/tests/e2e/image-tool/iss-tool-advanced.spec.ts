@@ -13,7 +13,7 @@ test.describe('ISS Tool Advanced Features Tests', () => {
     // 等待页面加载完成
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000);
-    
+    await page.largerthan(0); //shuoshen
     // 等待编辑器就绪
     await imageToolPage.waitForEditorReady();
   });
