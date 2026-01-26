@@ -33,10 +33,16 @@ export const dataFrameLast = defineAction({
     else changeFrame(editor, -1);
   },
 });
-function changeFrame(editor: Editor, step: number) {
+async function changeFrame(editor: Editor, step: number) {
   const { frames, frameIndex } = editor.state;
   const index = frameIndex + step;
   if (index < 0 || index >= frames.length) return;
+  // Auto-save pending changes before switching frames
+  const needSave = frames.findIndex((e) => e.needSave) !== -1;
+  if (needSave) {
+    const result = await editor.save();
+    if (!result) return;
+  }
   editor.switchFrame(index);
 }
 async function changeScene(editor: Editor, step: number) {

@@ -35,10 +35,16 @@ export const copyToLast = define({
   },
 });
 
-function changeFrame(editor: Editor, type: number) {
+async function changeFrame(editor: Editor, type: number) {
   const { frames, frameIndex } = editor.state;
   const index = frameIndex + type;
   if (index < 0 || index >= frames.length) return;
+  // Auto-save pending changes before switching frames
+  const needSave = frames.findIndex((e) => e.needSave) !== -1;
+  if (needSave) {
+    const result = await editor.save();
+    if (!result) return;
+  }
   editor.switchFrame(index);
 }
 function canCopy(editor: Editor) {
