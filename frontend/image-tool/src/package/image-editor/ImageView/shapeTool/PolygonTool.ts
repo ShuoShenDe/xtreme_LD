@@ -117,6 +117,12 @@ export default class PolygonTool extends PolylineTool {
         pointIndex: index,
       });
       
+      // 添加点击事件来选中锚点
+      anchor.on('click', (e: Konva.KonvaEventObject<MouseEvent>) => {
+        e.cancelBubble = true;
+        this.selectAnchor(anchor, index);
+      });
+      
       anchor.on('dragstart', () => {
         this.onEditStart();
       });
@@ -127,10 +133,23 @@ export default class PolygonTool extends PolylineTool {
         const objX = this.object!.x();
         const objY = this.object!.y();
         // 转换为相对坐标
-        currentPoints[index] = {
+        const newPoint = {
           x: anchorPos.x - objX,
           y: anchorPos.y - objY
         };
+        currentPoints[index] = newPoint;
+        
+        // 检查点合并（对于多边形，还需要检查首尾点的连接）
+        const mergedPoints = this.checkAndMergePointsPolygon(currentPoints, index);
+        if (mergedPoints.length !== currentPoints.length) {
+          // 发生了合并，更新锚点
+          this.object!.setAttrs({ points: mergedPoints });
+          this.updateEditObject(); // 重新创建锚点
+          this.updatePolygonDisplay();
+          this.onEditChange();
+          return;
+        }
+        
         this.object!.setAttrs({ points: currentPoints });
         
         this.updatePolygonDisplay();
@@ -143,6 +162,43 @@ export default class PolygonTool extends PolylineTool {
       
       this.editGroup.add(anchor);
     });
+  }
+
+  // 多边形特有的点合并检测（包括首尾点连接）
+  checkAndMergePointsPolygon(points: Vector2[], dragIndex: number): Vector2[] {
+    const mergeThreshold = 10; // 像素阈值
+    const dragPoint = points[dragIndex];
+    const pointCount = points.length;
+    
+    // 对于多边形，首点和尾点也是相邻的
+    const prevIndex = dragIndex === 0 ? pointCount - 1 : dragIndex - 1;
+    const nextIndex = dragIndex === pointCount - 1 ? 0 : dragIndex + 1;
+    
+    // 检查与前一个点的距离
+    const prevPoint = points[prevIndex];
+    const distToPrev = Math.sqrt(
+      Math.pow(dragPoint.x - prevPoint.x, 2) + Math.pow(dragPoint.y - prevPoint.y, 2)
+    );
+    if (distToPrev < mergeThreshold) {
+      // 与前一个点合并，删除当前点
+      const mergedPoints = [...points];
+      mergedPoints.splice(dragIndex, 1);
+      return mergedPoints;
+    }
+    
+    // 检查与后一个点的距离
+    const nextPoint = points[nextIndex];
+    const distToNext = Math.sqrt(
+      Math.pow(dragPoint.x - nextPoint.x, 2) + Math.pow(dragPoint.y - nextPoint.y, 2)
+    );
+    if (distToNext < mergeThreshold) {
+      // 与后一个点合并，删除当前点
+      const mergedPoints = [...points];
+      mergedPoints.splice(dragIndex, 1);
+      return mergedPoints;
+    }
+    
+    return points;
   }
 
   updatePolygonDisplay() {
